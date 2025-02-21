@@ -8,7 +8,13 @@ const { createToken } = require('../utils/token.utils');
 
 const UserSchema = new Schema(
   {
-    vin: { type: String, required: true, trim: true, unique: true, immutable: true },
+    vin: {
+      type: String,
+      trim: true,
+      unique: true,
+      immutable: true,
+      required: [true, 'is required'],
+    },
     firstName: {
       type: String,
       trim: true,
@@ -26,14 +32,26 @@ const UserSchema = new Schema(
     profileImageUrl: { type: String, default: '' },
     address: { type: String, trim: true, maxLength: 256, default: '' },
     electionsVoted: [{ type: Schema.Types.ObjectId, ref: 'Election' }],
-    gender: { type: String, trim: true, required: true, maxLength: 10 },
     occupation: { type: String, trim: true, maxLength: 64, default: '' },
     dateOfBirth: { type: String, trim: true, maxLength: 20, default: '' },
     otherNames: [{ type: String, trim: true, minLength: 2, maxLength: 64 }],
     password: { type: String, trim: true, required: [true, 'is required'] },
     role: { type: String, enum: [ROLES.USER], default: ROLES.USER, immutable: true },
     emailVerified: { type: Boolean, default: false, immutable: doc => doc.emailVerified },
-    delimitationCode: { type: String, trim: true, maxLength: 20, required: true, immutable: true },
+    gender: {
+      type: String,
+      trim: true,
+      maxLength: 10,
+      enum: ['MALE', 'FEMALE'],
+      required: [true, 'is required'],
+    },
+    delimitationCode: {
+      type: String,
+      trim: true,
+      maxLength: 20,
+      immutable: true,
+      required: [true, 'is required'],
+    },
     email: {
       type: String,
       trim: true,
@@ -66,6 +84,7 @@ UserSchema.statics.findByCredentials = async (email, password) => {
         refreshToken: createToken(tokenData, process.env.REFRESH_TOKEN_SECRET),
       };
 
+      // create tokens for user
       await Token.create(tokens);
       user.tokens = tokens;
       return user;
@@ -90,7 +109,7 @@ UserSchema.pre('save', function (next) {
 
   if (!user.isModified('password')) return next();
 
-  bcrypt.genSalt(30, (error, salt) => {
+  bcrypt.genSalt(10, (error, salt) => {
     if (error) return next(error);
 
     bcrypt.hash(user.password, salt, (error, hash) => {

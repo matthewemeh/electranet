@@ -64,6 +64,7 @@ AdminSchema.statics.findByCredentials = async (email, password) => {
         refreshToken: createToken(tokenData, process.env.REFRESH_TOKEN_SECRET),
       };
 
+      // create tokens for admin
       await Token.create(tokens);
       admin.tokens = tokens;
       return admin;
@@ -88,7 +89,7 @@ AdminSchema.pre('save', function (next) {
 
   if (!admin.isModified('password')) return next();
 
-  bcrypt.genSalt(30, (error, salt) => {
+  bcrypt.genSalt(10, (error, salt) => {
     if (error) return next(error);
 
     bcrypt.hash(admin.password, salt, (error, hash) => {

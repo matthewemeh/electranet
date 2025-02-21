@@ -61,7 +61,7 @@ const verifyAdminToken = async (req, res, next) => {
     const adminTokenExpired = Date.now() > adminToken.expiresAt;
     if (adminTokenExpired) {
       httpStatusCode = 403;
-      throw new Error('Admin token has expired');
+      throw new Error('Admin token has expired. Contact Super-Admin for access renewal');
     }
   } catch (error) {
     return res

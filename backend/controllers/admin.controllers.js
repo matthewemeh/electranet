@@ -6,7 +6,7 @@ const User = require('../models/user.model');
 const Admin = require('../models/admin.model');
 const Token = require('../models/token.model');
 const { sendOTP } = require('../utils/otp.utils');
-const storage = require('../config/firebase.config');
+const storage = require('../configs/firebase.config');
 const { checkIfFileExists } = require('../utils/firebase.utils');
 const { sendNotification } = require('../utils/notification.utils');
 const { createToken, sendResetToken } = require('../utils/token.utils');
@@ -18,7 +18,7 @@ const registerAdmin = async (req, res) => {
   let httpStatusCode = 400;
   try {
     const adminPayload = JSON.parse(
-      req.files.find(({ fieldname }) => fieldname === USER_PAYLOAD_KEY).buffer
+      req.files?.find(({ fieldname }) => fieldname === USER_PAYLOAD_KEY)?.buffer ?? '{}'
     );
 
     // Check for duplicate email
@@ -28,8 +28,19 @@ const registerAdmin = async (req, res) => {
       throw new Error(`This email: ${adminPayload.email} is already registered on the platform`);
     }
 
+    // Check for duplicate email in user accounts
+    const duplicateAccountExists = await User.findOne({ email: adminPayload.email });
+    if (duplicateAccountExists) {
+      httpStatusCode = 409;
+      throw new Error(
+        `This email: ${adminPayload.email} is already registered as an user on the platform`
+      );
+    }
+
     // upload admin profile image (if any) to firebase database
-    const profileImage = req.files.find(({ fieldname }) => fieldname === PROFILE_IMAGE_KEY)?.buffer;
+    const profileImage = req.files?.find(
+      ({ fieldname }) => fieldname === PROFILE_IMAGE_KEY
+    )?.buffer;
     const newAdmin = new Admin(adminPayload);
     if (profileImage) {
       const imageRef = ref(storage, `admins/${newAdmin._id}`);
@@ -66,14 +77,16 @@ const updateAdmin = async (req, res) => {
   // only profile image can be updated
   try {
     // const adminPayload = JSON.parse(
-    //   req.files.find(({ fieldname }) => fieldname === USER_PAYLOAD_KEY).buffer
+    //   req.files?.find(({ fieldname }) => fieldname === USER_PAYLOAD_KEY)?.buffer
     // );
 
     const { adminID } = req.admin;
     const admin = await Admin.findById(adminID);
 
     // upload admin's updated profile image (if any) to firebase database
-    const profileImage = req.files.find(({ fieldname }) => fieldname === PROFILE_IMAGE_KEY)?.buffer;
+    const profileImage = req.files?.find(
+      ({ fieldname }) => fieldname === PROFILE_IMAGE_KEY
+    )?.buffer;
     if (profileImage) {
       const imageRef = ref(storage, `admins/${adminID}`);
       const snapshot = await uploadBytes(imageRef, profileImage);

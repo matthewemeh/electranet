@@ -4,6 +4,7 @@ const { ref, uploadBytes, getDownloadURL, deleteObject } = require('firebase/sto
 const OTP = require('../models/otp.model');
 const User = require('../models/user.model');
 const Token = require('../models/token.model');
+const Admin = require('../models/admin.model');
 const { sendOTP } = require('../utils/otp.utils');
 const storage = require('../configs/firebase.config');
 const { checkIfFileExists } = require('../utils/firebase.utils');
@@ -17,7 +18,7 @@ const registerUser = async (req, res) => {
   let httpStatusCode = 400;
   try {
     const userPayload = JSON.parse(
-      req.files.find(({ fieldname }) => fieldname === USER_PAYLOAD_KEY).buffer
+      req.files?.find(({ fieldname }) => fieldname === USER_PAYLOAD_KEY)?.buffer ?? '{}'
     );
 
     // TODO: Integrate VIN verification using 3rd party API
@@ -38,8 +39,19 @@ const registerUser = async (req, res) => {
       throw new Error(`This email: ${userPayload.email} is already registered on the platform`);
     }
 
+    // Check for duplicate email in admin accounts
+    const duplicateAccountExists = await Admin.findOne({ email: userPayload.email });
+    if (duplicateAccountExists) {
+      httpStatusCode = 409;
+      throw new Error(
+        `This email: ${userPayload.email} is already registered as an admin on the platform`
+      );
+    }
+
     // upload user profile image (if any) to firebase database
-    const profileImage = req.files.find(({ fieldname }) => fieldname === PROFILE_IMAGE_KEY)?.buffer;
+    const profileImage = req.files?.find(
+      ({ fieldname }) => fieldname === PROFILE_IMAGE_KEY
+    )?.buffer;
     const newUser = new User(userPayload);
     if (profileImage) {
       const imageRef = ref(storage, `users/${newUser._id}`);

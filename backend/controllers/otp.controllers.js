@@ -13,7 +13,13 @@ const resendOTP = async (req, res) => {
     }
 
     // clear any old record
-    await OTP.deleteOne({ email });
+    const otpRecord = await OTP.findOne({ email });
+    if (otpRecord) {
+      await OTP.deleteOne({ email });
+    } else {
+      // user/admin has never gotten an OTP before!
+      throw new Error('No OTP record found');
+    }
 
     const generatedOTP = await generateOTP();
 
@@ -21,7 +27,7 @@ const resendOTP = async (req, res) => {
     <strong style="font-size:25px;letter-spacing:2px">${generatedOTP}</strong>
     <p>This code expires in ${duration} minute(s).</p>
     <p>If you did not initiate the process that sent this email, please disregard this email. Your privacy is important to us.</p>
-    <p>Best regards,<span style="display:block;">Nest Mate.</span><span>Your #1 Hostel Management Platform.</span></p>
+    <p>Best regards,<span style="display:block;">Electranet.</span></p>
     `;
 
     // send email

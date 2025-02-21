@@ -4,12 +4,14 @@ const { connect, connection } = require('mongoose');
 
 require('dotenv').config();
 const app = express();
-const { PORT, ATLAS_URI } = process.env;
+
+const { PORT, MONGO_USERNAME, MONGO_PWD } = process.env;
+const connectionString = `mongodb+srv://${MONGO_USERNAME}:${MONGO_PWD}@cluster0.t0kiv.mongodb.net/electranet?retryWrites=true&w=majority&appName=Cluster0`;
 
 app.use(cors());
 app.use(express.json());
 
-connect(ATLAS_URI);
+connect(connectionString);
 
 connection.once('open', () => console.log('MongoDB database connection established successfully'));
 

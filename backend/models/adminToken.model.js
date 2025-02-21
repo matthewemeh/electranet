@@ -18,7 +18,7 @@ const StatusSchema = new Schema(
 const AdminTokenSchema = new Schema(
   {
     status: { type: StatusSchema },
-    expiresAt: { type: Date, required: true, immutable: true },
+    expiresAt: { type: Date, required: true },
     createdAt: { type: Date, default: Date.now(), immutable: true },
     email: {
       type: String,

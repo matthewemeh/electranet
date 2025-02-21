@@ -6,7 +6,7 @@ const { compare, hash } = require('bcrypt');
  * @param {string | number} saltRounds the number of salt rounds to be used for encryption
  * @returns {string} encrypted data salt
  */
-const hashData = async (data, saltRounds = 30) => {
+const hashData = async (data, saltRounds = 10) => {
   try {
     const hashedData = await hash(data, saltRounds);
     return hashedData;
