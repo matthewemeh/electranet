@@ -1,0 +1,52 @@
+{
+  "name": "electranet-backend",
+  "version": "1.0.0",
+  "description": "DESIGN AND IMPLEMENTATION OF A SECURE ONLINE VOTING SYSTEM (BACKEND)",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon app.js",
+    "start": "node app.js",
+    "tsc-watch": "tsc -w"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/matthewemeh/electranet.git"
+  },
+  "keywords": [
+    "electranet",
+    "voting",
+    "vote",
+    "e-vote",
+    "e-voting",
+    "polls",
+    "online"
+  ],
+  "author": "Matthew Emeh",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/matthewemeh/electranet/issues"
+  },
+  "homepage": "https://github.com/matthewemeh/electranet#readme",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "crypto-js": "^4.2.0",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "firebase": "^11.3.1",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.10.1",
+    "mongoose-paginate": "^5.0.3",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.10.0",
+    "uuid": "^11.1.0",
+    "validator": "^13.12.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.8",
+    "@types/nodemailer": "^6.4.17",
+    "nodemon": "^3.1.9",
+    "typescript": "^5.7.3"
+  }
+}

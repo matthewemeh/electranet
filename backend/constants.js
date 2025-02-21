@@ -1,0 +1,6 @@
+module.exports = {
+  USER_PAYLOAD_KEY: 'userPayload',
+  PROFILE_IMAGE_KEY: 'profileImage',
+  ADMIN_TOKEN_STATUS_CODES: { REVOKED: 'REVOKED', ACTIVE: 'ACTIVE' },
+  ROLES: { USER: 'USER', ADMIN: 'ADMIN', SUPER_ADMIN: 'SUPER_ADMIN' },
+};
