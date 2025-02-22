@@ -64,7 +64,7 @@ const registerUser = async (req, res) => {
     const user = await newUser.save();
 
     // after successful user registration, add tokens to user object before sending to client
-    const tokenData = { email: user.email, userID: user._id };
+    const tokenData = { issuedAt: Date.now(), email: user.email, userID: user._id };
     let tokens = {
       accessToken: createToken(tokenData),
       refreshToken: createToken(
@@ -291,7 +291,7 @@ const getRefreshToken = async (req, res) => {
     const { email, userID } = req.user;
 
     // create new accessToken
-    const accessToken = createToken({ email, userID });
+    const accessToken = createToken({ issuedAt: Date.now(), email, userID });
     const tokenRecord = await Token.findOne({ email });
     tokenRecord.accessToken = await hashData(accessToken);
     await tokenRecord.save();

@@ -58,7 +58,7 @@ const registerAdmin = async (req, res) => {
     const admin = await newAdmin.save();
 
     // after successful admin registration, add tokens to admin object before sending to client
-    const tokenData = { email: admin.email, adminID: admin._id };
+    const tokenData = { issuedAt: Date.now(), email: admin.email, adminID: admin._id };
     let tokens = {
       accessToken: createToken(tokenData),
       refreshToken: createToken(
@@ -313,7 +313,7 @@ const getRefreshToken = async (req, res) => {
     const { email, adminID } = req.admin;
 
     // create new accessToken
-    const accessToken = createToken({ email, adminID });
+    const accessToken = createToken({ issuedAt: Date.now(), email, adminID });
     const tokenRecord = await Token.findOne({ email });
     tokenRecord.accessToken = await hashData(accessToken);
     await tokenRecord.save();

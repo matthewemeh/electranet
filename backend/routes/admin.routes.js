@@ -35,13 +35,13 @@ router.route('/register/verify-otp').patch(verifyOtp, verifyRegisterOtp);
 
 router.route('/auth/forgot-password/initiate').post(forgotPasswordInitiate);
 
-router.route('/auth/forgot-password/verify-otp').patch(verifyOtp, verifyForgotPasswordOtp);
+router.route('/auth/forgot-password/verify-otp').post(verifyOtp, verifyForgotPasswordOtp);
 
 router.route('/auth/forgot-password/reset').patch(verifyResetToken, resetPassword);
 
 router.route('/delete-profile-image').patch(verifyToken, deleteProfileImage);
 
-router.route('/refresh-token').get(verifyRefreshToken, getRefreshToken);
+router.route('/refresh-token').post(verifyRefreshToken, getRefreshToken);
 
 router.route('/update-admin').patch(upload.any(), verifyToken, updateAdmin);
 

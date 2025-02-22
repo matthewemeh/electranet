@@ -63,21 +63,21 @@ const verifyAdminToken = async (req, res, next) => {
     const adminToken = await AdminToken.findOne({ email });
     if (!adminToken) {
       httpStatusCode = 404;
-      throw new Error('No admin token available');
+      throw new Error('No admin rights available. Request rights from Super-Admin');
     }
 
     // check if admin token has been revoked
     const adminTokenRevoked = adminToken.status.statusCode === ADMIN_TOKEN_STATUS_CODES.REVOKED;
     if (adminTokenRevoked) {
       httpStatusCode = 403;
-      throw new Error('Admin token has been revoked. Contact Super-Admin for more details');
+      throw new Error('Admin rights have been revoked. Contact Super-Admin for more details');
     }
 
     // check if admin token has expired
     const adminTokenExpired = Date.now() > adminToken.expiresAt;
     if (adminTokenExpired) {
       httpStatusCode = 403;
-      throw new Error('Admin token has expired. Contact Super-Admin for access renewal');
+      throw new Error('Admin rights have expired. Contact Super-Admin for access renewal');
     }
   } catch (error) {
     return res

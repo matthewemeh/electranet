@@ -60,7 +60,7 @@ AdminSchema.statics.findByCredentials = async (email, password) => {
 
     const passwordMatches = bcrypt.compareSync(password, admin.password);
     if (passwordMatches) {
-      const tokenData = { email, adminID: admin._id };
+      const tokenData = { issuedAt: Date.now(), email, adminID: admin._id };
       let tokens = {
         accessToken: createToken(tokenData),
         refreshToken: createToken(
@@ -77,6 +77,9 @@ AdminSchema.statics.findByCredentials = async (email, password) => {
       // then hash the tokens
       tokens.accessToken = await hashData(tokens.accessToken);
       tokens.refreshToken = await hashData(tokens.refreshToken);
+
+      // delete any previous tokens
+      await Token.deleteOne({ email });
 
       // upload hashed tokens to database
       tokens.email = email;

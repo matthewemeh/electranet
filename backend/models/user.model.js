@@ -86,7 +86,7 @@ UserSchema.statics.findByCredentials = async (email, password) => {
 
     const passwordMatches = bcrypt.compareSync(password, user.password);
     if (passwordMatches) {
-      const tokenData = { email, userID: user._id };
+      const tokenData = { issuedAt: Date.now(), email, userID: user._id };
       let tokens = {
         accessToken: createToken(tokenData),
         refreshToken: createToken(
