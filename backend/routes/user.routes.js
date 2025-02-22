@@ -1,12 +1,12 @@
 const multer = require('multer');
 const router = require('express').Router();
 
-const { logout } = require('../controllers/index.controllers');
-const { verifyToken } = require('../middlewares/user.middlewares');
 const { verifyOtp, verifyResetToken } = require('../middlewares/index.middlewares');
+const { verifyToken, verifyRefreshToken } = require('../middlewares/user.middlewares');
 
 const {
   login,
+  logout,
   // updateUser,
   registerUser,
   resetPassword,
@@ -35,7 +35,7 @@ router.route('/auth/forgot-password/reset').patch(verifyResetToken, resetPasswor
 
 router.route('/delete-profile-image').patch(verifyToken, deleteProfileImage);
 
-router.route('/refresh-token').get(getRefreshToken);
+router.route('/refresh-token').post(verifyRefreshToken, getRefreshToken);
 
 // Please refer to block comment above the (commented) updateUser controller in user.controllers.js
 // router.route('/update-user').patch(upload.any(), verifyToken, updateUser);

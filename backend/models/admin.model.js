@@ -4,6 +4,7 @@ const mongoosePaginate = require('mongoose-paginate');
 
 const { ROLES } = require('../constants');
 const Token = require('../models/token.model');
+const { hashData } = require('../utils/hash.utils');
 const { createToken } = require('../utils/token.utils');
 
 const AdminSchema = new Schema(
@@ -29,6 +30,7 @@ const AdminSchema = new Schema(
     role: {
       type: String,
       immutable: true,
+      uppercase: true,
       default: ROLES.ADMIN,
       enum: [ROLES.ADMIN, ROLES.SUPER_ADMIN],
     },
@@ -45,7 +47,7 @@ const AdminSchema = new Schema(
       },
     },
   },
-  { minimize: false, versionKey: false, collection: 'admins' }
+  { minimize: false, timestamps: true, collection: 'admins' }
 );
 AdminSchema.plugin(mongoosePaginate);
 
@@ -59,15 +61,27 @@ AdminSchema.statics.findByCredentials = async (email, password) => {
     const passwordMatches = bcrypt.compareSync(password, admin.password);
     if (passwordMatches) {
       const tokenData = { email, adminID: admin._id };
-      const tokens = {
+      let tokens = {
         accessToken: createToken(tokenData),
-        refreshToken: createToken(tokenData, process.env.REFRESH_TOKEN_SECRET),
+        refreshToken: createToken(
+          tokenData,
+          process.env.REFRESH_TOKEN_SECRET,
+          process.env.REFRESH_TOKEN_EXPIRY
+        ),
       };
 
-      // create tokens for admin
+      // store unhashed tokens for admin
+      const adminObject = admin.toJSON();
+      adminObject.tokens = { ...tokens };
+
+      // then hash the tokens
+      tokens.accessToken = await hashData(tokens.accessToken);
+      tokens.refreshToken = await hashData(tokens.refreshToken);
+
+      // upload hashed tokens to database
+      tokens.email = email;
       await Token.create(tokens);
-      admin.tokens = tokens;
-      return admin;
+      return adminObject;
     }
     throw new Error('Invalid credentials');
   } catch (error) {

@@ -4,7 +4,7 @@ const OTPSchema = new Schema(
   {
     otp: { type: String, required: true, immutable: true },
     expiresAt: { type: Date, required: true, immutable: true },
-    createdAt: { type: Date, default: Date.now(), immutable: true },
+    createdAt: { type: Date, required: true, immutable: true },
     email: {
       type: String,
       trim: true,
@@ -18,7 +18,7 @@ const OTPSchema = new Schema(
       },
     },
   },
-  { minimize: false, timestamps: false, versionKey: false, collection: 'otps' }
+  { minimize: false, collection: 'otps' }
 );
 
 const OTP = model('OTP', OTPSchema);

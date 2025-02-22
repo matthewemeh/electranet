@@ -5,7 +5,7 @@ const ResetTokenSchema = new Schema(
   {
     token: { type: String, required: true, immutable: true },
     expiresAt: { type: Date, required: true, immutable: true },
-    createdAt: { type: Date, default: Date.now(), immutable: true },
+    createdAt: { type: Date, required: true, immutable: true },
     email: {
       type: String,
       trim: true,
@@ -19,7 +19,7 @@ const ResetTokenSchema = new Schema(
       },
     },
   },
-  { minimize: false, timestamps: false, versionKey: false, collection: 'resetTokens' }
+  { minimize: false, collection: 'resetTokens' }
 );
 
 const ResetToken = model('ResetToken', ResetTokenSchema);

@@ -1,4 +1,3 @@
-const jwt = require('jsonwebtoken');
 const { ref, uploadBytes, getDownloadURL, deleteObject } = require('firebase/storage');
 
 const OTP = require('../models/otp.model');
@@ -6,13 +5,15 @@ const User = require('../models/user.model');
 const Admin = require('../models/admin.model');
 const Token = require('../models/token.model');
 const { sendOTP } = require('../utils/otp.utils');
+const { hashData } = require('../utils/hash.utils');
 const storage = require('../configs/firebase.config');
+const ResetToken = require('../models/resetToken.model');
 const { checkIfFileExists } = require('../utils/firebase.utils');
 const { sendNotification } = require('../utils/notification.utils');
 const { createToken, sendResetToken } = require('../utils/token.utils');
 
 /* Multipart key information */
-const { USER_PAYLOAD_KEY, PROFILE_IMAGE_KEY } = require('../constants');
+const { USER_PAYLOAD_KEY, PROFILE_IMAGE_KEY, ROLES } = require('../constants');
 
 const registerAdmin = async (req, res) => {
   let httpStatusCode = 400;
@@ -37,6 +38,12 @@ const registerAdmin = async (req, res) => {
       );
     }
 
+    // check to ensure only 1 super-admin exists always
+    const superAdminExists = await Admin.findOne({ role: ROLES.SUPER_ADMIN });
+    if (superAdminExists && adminPayload.role === ROLES.SUPER_ADMIN) {
+      throw new Error('A Super-Admin already exists on the platform');
+    }
+
     // upload admin profile image (if any) to firebase database
     const profileImage = req.files?.find(
       ({ fieldname }) => fieldname === PROFILE_IMAGE_KEY
@@ -52,19 +59,33 @@ const registerAdmin = async (req, res) => {
 
     // after successful admin registration, add tokens to admin object before sending to client
     const tokenData = { email: admin.email, adminID: admin._id };
-    const tokens = {
+    let tokens = {
       accessToken: createToken(tokenData),
-      refreshToken: createToken(tokenData, process.env.REFRESH_TOKEN_SECRET),
+      refreshToken: createToken(
+        tokenData,
+        process.env.REFRESH_TOKEN_SECRET,
+        process.env.REFRESH_TOKEN_EXPIRY
+      ),
     };
 
-    // give admin new tokens
+    // store unhashed tokens for admin
+    const adminObject = admin.toJSON();
+    adminObject.tokens = { ...tokens };
+
+    // then hash the tokens
+    tokens.accessToken = await hashData(tokens.accessToken);
+    tokens.refreshToken = await hashData(tokens.refreshToken);
+
+    // upload hashed tokens to database
+    tokens.email = admin.email;
     await Token.create(tokens);
-    admin.tokens = tokens;
 
     // send OTP to admin
     await sendOTP({ email: admin.email, subject: 'ELECTRANET: Verify Email' });
 
-    res.status(201).json({ message: 'Registration successful', status: 'success', data: admin });
+    res
+      .status(201)
+      .json({ message: 'Registration successful', status: 'success', data: adminObject });
   } catch (error) {
     console.log(error);
     res
@@ -118,8 +139,11 @@ const resetPassword = async (req, res) => {
     admin.password = password;
     await admin.save();
 
-    // delete OTP record
-    await OTP.deleteOne({ email });
+    // delete resetToken record
+    await ResetToken.deleteOne({ email });
+
+    // delete any existing user tokens
+    await Token.deleteOne({ email });
 
     await sendNotification({
       id: admin._id,
@@ -145,7 +169,7 @@ const verifyRegisterOtp = async (req, res) => {
     const { email } = req.body;
 
     // verify admin email
-    const admin = await Admin.findOneAndUpdate({ email }, { emailVerified: true });
+    const admin = await Admin.findOneAndUpdate({ email }, { emailVerified: true }, { new: true });
 
     // delete otp record
     await OTP.deleteOne({ email });
@@ -191,7 +215,11 @@ const verifyForgotPasswordOtp = async (req, res) => {
   try {
     const { email } = req.body;
 
+    // generate reset token
     const resetToken = await sendResetToken(email);
+
+    // then delete the otp record
+    await OTP.deleteOne({ email });
     res.status(200).json({
       status: 'success',
       data: { email, resetToken },
@@ -206,6 +234,7 @@ const verifyForgotPasswordOtp = async (req, res) => {
 };
 
 const deleteProfileImage = async (req, res) => {
+  let httpStatusCode = 400;
   try {
     const admin = await Admin.findById(req.admin.adminID);
 
@@ -216,6 +245,9 @@ const deleteProfileImage = async (req, res) => {
       const fileRef = ref(storage, filePath);
       await deleteObject(fileRef);
       admin.profileImageUrl = '';
+    } else {
+      httpStatusCode = 404;
+      throw new Error('No profile image found');
     }
 
     const updatedAdmin = await admin.save();
@@ -226,8 +258,8 @@ const deleteProfileImage = async (req, res) => {
     });
   } catch (error) {
     res
-      .status(400)
-      .json({ message: error.message, status: 'failed', errors: null, httpStatusCode: 400 });
+      .status(httpStatusCode)
+      .json({ message: error.message, status: 'failed', errors: null, httpStatusCode });
   }
 };
 
@@ -277,26 +309,14 @@ const getUser = async (req, res) => {
 };
 
 const getRefreshToken = async (req, res) => {
-  const httpStatusCode = 500;
   try {
-    const { refreshToken } = req.body;
-    if (!refreshToken) {
-      httpStatusCode = 401;
-      throw new Error('An authorization token is required');
-    }
+    const { email, adminID } = req.admin;
 
-    // check if refreshToken exists in database
-    const tokens = await Token.find({ refreshToken });
-    if (!tokens) {
-      httpStatusCode = 403;
-      throw new Error('Session expired. Please login to start new session');
-    }
-
-    // generate new access token
-    const { email, adminID } = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    // create new accessToken
     const accessToken = createToken({ email, adminID });
-    tokens.accessToken = accessToken;
-    await tokens.save();
+    const tokenRecord = await Token.findOne({ email });
+    tokenRecord.accessToken = await hashData(accessToken);
+    await tokenRecord.save();
 
     res
       .status(200)
@@ -304,13 +324,26 @@ const getRefreshToken = async (req, res) => {
   } catch (error) {
     console.log(error);
     res
-      .status(httpStatusCode)
-      .json({ message: error.message, status: 'failed', httpStatusCode, errors: null });
+      .status(500)
+      .json({ message: error.message, status: 'failed', httpStatusCode: 500, errors: null });
+  }
+};
+
+const logout = async (req, res) => {
+  try {
+    await Token.deleteOne({ email: req.admin.email });
+    res.status(200).json({ message: 'Logout successful', status: 'success', data: null });
+  } catch (error) {
+    console.log(error);
+    res
+      .status(500)
+      .json({ message: error.message, status: 'failed', httpStatusCode: 500, errors: null });
   }
 };
 
 module.exports = {
   login,
+  logout,
   getUser,
   getUsers,
   updateAdmin,

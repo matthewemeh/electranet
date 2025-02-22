@@ -27,7 +27,7 @@ const ElectionSchema = new Schema(
       immutable: doc => Date.now() >= doc.startTime,
     },
   },
-  { minimize: false, versionKey: false, collection: 'elections' }
+  { minimize: false, timestamps: true, collection: 'elections' }
 );
 ElectionSchema.plugin(mongoosePaginate);
 

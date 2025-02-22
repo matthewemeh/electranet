@@ -10,7 +10,7 @@ const castVote = async (req, res) => {
 
     // check if user has voted before
     const user = await User.findById(userID);
-    if (user.electionsVoted.includes(electionID)) {
+    if (user.electionsVoted.indexOf(electionID) !== -1) {
       throw new Error('You have voted for this election already!');
     }
 

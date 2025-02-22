@@ -6,7 +6,7 @@ const VoteData = new Schema(
     party: { type: Schema.Types.ObjectId, ref: 'Party', required: true },
     election: { type: Schema.Types.ObjectId, ref: 'Election', required: true },
   },
-  { minimize: false, versionKey: false, timestamps: false }
+  { minimize: false, versionKey: false }
 );
 
 const VoteSchema = new Schema(
@@ -18,7 +18,7 @@ const VoteSchema = new Schema(
     previousHash: { type: String, required: true, immutable: true },
     index: { type: Number, required: true, min: 0, immutable: true },
   },
-  { minimize: false, versionKey: false, timestamps: false, collection: 'votes' }
+  { minimize: false, collection: 'votes' }
 );
 VoteSchema.plugin(mongoosePaginate);
 

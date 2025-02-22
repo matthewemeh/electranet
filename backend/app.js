@@ -5,10 +5,21 @@ const { connect, connection } = require('mongoose');
 require('dotenv').config();
 const app = express();
 
-const { PORT, MONGO_USERNAME, MONGO_PWD } = process.env;
+const { PORT, MONGO_USERNAME, MONGO_PWD, WHITELISTED_DOMAINS } = process.env;
 const connectionString = `mongodb+srv://${MONGO_USERNAME}:${MONGO_PWD}@cluster0.t0kiv.mongodb.net/electranet?retryWrites=true&w=majority&appName=Cluster0`;
 
-app.use(cors());
+const whitelistedDomains = WHITELISTED_DOMAINS.split(', ');
+const corsOptions = {
+  origin: (origin, callback) => {
+    if (whitelistedDomains.indexOf(origin) === -1) {
+      callback(new Error('Not allowed by CORS'));
+    } else {
+      callback(null, true);
+    }
+  },
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 connect(connectionString);

@@ -30,12 +30,17 @@ const resendOTP = async (req, res) => {
     <p>Best regards,<span style="display:block;">Electranet.</span></p>
     `;
 
-    // send email
-    await sendEmail(req.body);
-
     // save otp record
     const hashedOTP = await hashData(generatedOTP);
-    await OTP.create({ email, otp: hashedOTP, expiresAt: Date.now() + 60_000 * +duration });
+    await OTP.create({
+      email,
+      otp: hashedOTP,
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 60_000 * +duration,
+    });
+
+    // send email
+    await sendEmail(req.body);
 
     res.status(200).json({ message: 'OTP sent successfully', status: 'success', data: null });
   } catch (error) {

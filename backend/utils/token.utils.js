@@ -4,7 +4,7 @@ const { v4: uuidv4 } = require('uuid');
 const { hashData } = require('./hash.utils');
 const ResetToken = require('../models/resetToken.model');
 
-const { ACCESS_TOKEN_SECRET, TOKEN_EXPIRY } = process.env;
+const { ACCESS_TOKEN_SECRET, ACCESS_TOKEN_EXPIRY } = process.env;
 
 /**
  *
@@ -13,7 +13,11 @@ const { ACCESS_TOKEN_SECRET, TOKEN_EXPIRY } = process.env;
  * @param {string?} expiresIn specifies when generated token expires e.g 10s, 15s, 5m, 2d, etc
  * @returns {string} generated signed token
  */
-const createToken = (tokenData, tokenKey = ACCESS_TOKEN_SECRET, expiresIn = TOKEN_EXPIRY) => {
+const createToken = (
+  tokenData,
+  tokenKey = ACCESS_TOKEN_SECRET,
+  expiresIn = ACCESS_TOKEN_EXPIRY
+) => {
   try {
     return jwt.sign(tokenData, tokenKey, { expiresIn });
   } catch (error) {
@@ -37,6 +41,7 @@ const sendResetToken = async (email, duration = 10) => {
     const hashedResetToken = await hashData(generatedResetToken);
     await ResetToken.create({
       email,
+      createdAt: Date.now(),
       token: hashedResetToken,
       expiresAt: Date.now() + 60_000 * +duration,
     });

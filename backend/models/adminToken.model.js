@@ -4,14 +4,15 @@ const { ADMIN_TOKEN_STATUS_CODES } = require('../constants');
 
 const StatusSchema = new Schema(
   {
-    statusStart: { type: Date, default: Date.now() },
+    statusStart: { type: Date, required: true },
     statusCode: {
       type: String,
+      uppercase: true,
       default: ADMIN_TOKEN_STATUS_CODES.ACTIVE,
       enum: Object.values(ADMIN_TOKEN_STATUS_CODES),
     },
   },
-  { minimize: false, versionKey: false, timestamps: false }
+  { minimize: false, versionKey: false }
 );
 
 // These tokens are for managing admin rights
@@ -19,7 +20,7 @@ const AdminTokenSchema = new Schema(
   {
     status: { type: StatusSchema },
     expiresAt: { type: Date, required: true },
-    createdAt: { type: Date, default: Date.now(), immutable: true },
+    createdAt: { type: Date, required: true, immutable: true },
     email: {
       type: String,
       trim: true,
@@ -33,7 +34,7 @@ const AdminTokenSchema = new Schema(
       },
     },
   },
-  { minimize: false, timestamps: false, versionKey: false, collection: 'adminTokens' }
+  { minimize: false, collection: 'adminTokens' }
 );
 
 const AdminToken = model('AdminToken', AdminTokenSchema);

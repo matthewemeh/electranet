@@ -8,7 +8,7 @@ const NotificationSchema = new Schema(
     admin: { type: Schema.Types.ObjectId, immutable: false, ref: 'Admin' },
     message: { type: String, required: true, trim: true, immutable: true },
   },
-  { minimize: false, versionKey: false, collection: 'notifications' }
+  { minimize: false, timestamps: true, collection: 'notifications' }
 );
 NotificationSchema.plugin(mongoosePaginate);
 

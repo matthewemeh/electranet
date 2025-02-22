@@ -1,12 +1,16 @@
 const multer = require('multer');
 const router = require('express').Router();
 
-const { logout } = require('../controllers/index.controllers');
 const { verifyOtp, verifyResetToken } = require('../middlewares/index.middlewares');
-const { verifyToken, verifyAdminToken } = require('../middlewares/admin.middlewares');
+const {
+  verifyToken,
+  verifyAdminToken,
+  verifyRefreshToken,
+} = require('../middlewares/admin.middlewares');
 
 const {
   login,
+  logout,
   getUser,
   getUsers,
   updateAdmin,
@@ -37,7 +41,7 @@ router.route('/auth/forgot-password/reset').patch(verifyResetToken, resetPasswor
 
 router.route('/delete-profile-image').patch(verifyToken, deleteProfileImage);
 
-router.route('/refresh-token').get(getRefreshToken);
+router.route('/refresh-token').get(verifyRefreshToken, getRefreshToken);
 
 router.route('/update-admin').patch(upload.any(), verifyToken, updateAdmin);
 

@@ -24,7 +24,7 @@ const ContestantSchema = new Schema(
     stateOfOrigin: { type: String, trim: true, required: true, maxLength: 20 },
     election: { type: Schema.Types.ObjectId, ref: 'Election', required: true },
   },
-  { minimize: false, versionKey: false, collection: 'contestants' }
+  { minimize: false, timestamps: true, collection: 'contestants' }
 );
 ContestantSchema.plugin(mongoosePaginate);
 

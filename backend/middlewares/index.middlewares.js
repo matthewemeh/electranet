@@ -7,6 +7,11 @@ const verifyOtp = async (req, res, next) => {
   try {
     const { email, otp } = req.body;
 
+    if (!otp) {
+      httpStatusCode = 400;
+      throw new Error("Provide 'otp' field");
+    }
+
     // check if OTP record exists in database
     const otpRecord = await OTP.findOne({ email });
     if (!otpRecord) {
@@ -42,6 +47,9 @@ const verifyResetToken = async (req, res, next) => {
     const { password, email, resetToken } = req.body;
     if (!password) {
       throw new Error('Password is required!');
+    }
+    if (!resetToken) {
+      throw new Error('Reset token is required!');
     }
 
     const resetTokenRecord = await ResetToken.findOne({ email });

@@ -34,12 +34,17 @@ const sendOTP = async ({ email, subject, duration = 5 }) => {
     <p>Best regards,<span style="display:block;">Electranet.</span></p>
     `;
 
-    // send email
-    await sendEmail({ email, subject, html });
-
     // save otp record
     const hashedOTP = await hashData(generatedOTP);
-    await OTP.create({ email, otp: hashedOTP, expiresAt: Date.now() + 60_000 * +duration });
+    await OTP.create({
+      email,
+      otp: hashedOTP,
+      createdAt: Date.now(),
+      expiresAt: Date.now() + 60_000 * +duration,
+    });
+
+    // send email
+    await sendEmail({ email, subject, html });
   } catch (error) {
     throw error;
   }

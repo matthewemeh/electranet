@@ -6,7 +6,9 @@ const User = require('../models/user.model');
 const Token = require('../models/token.model');
 const Admin = require('../models/admin.model');
 const { sendOTP } = require('../utils/otp.utils');
+const { hashData } = require('../utils/hash.utils');
 const storage = require('../configs/firebase.config');
+const ResetToken = require('../models/resetToken.model');
 const { checkIfFileExists } = require('../utils/firebase.utils');
 const { sendNotification } = require('../utils/notification.utils');
 const { createToken, sendResetToken } = require('../utils/token.utils');
@@ -63,19 +65,33 @@ const registerUser = async (req, res) => {
 
     // after successful user registration, add tokens to user object before sending to client
     const tokenData = { email: user.email, userID: user._id };
-    const tokens = {
+    let tokens = {
       accessToken: createToken(tokenData),
-      refreshToken: createToken(tokenData, process.env.REFRESH_TOKEN_SECRET),
+      refreshToken: createToken(
+        tokenData,
+        process.env.REFRESH_TOKEN_SECRET,
+        process.env.REFRESH_TOKEN_EXPIRY
+      ),
     };
 
-    // give user new tokens
+    // store unhashed tokens for user
+    const userObject = user.toJSON();
+    userObject.tokens = { ...tokens };
+
+    // then hash the tokens
+    tokens.accessToken = await hashData(tokens.accessToken);
+    tokens.refreshToken = await hashData(tokens.refreshToken);
+
+    // upload hashed tokens to database
+    tokens.email = user.email;
     await Token.create(tokens);
-    user.tokens = tokens;
 
     // send OTP to user
     await sendOTP({ email: user.email, subject: 'ELECTRANET: Verify Email' });
 
-    res.status(201).json({ message: 'Registration successful', status: 'success', data: user });
+    res
+      .status(201)
+      .json({ message: 'Registration successful', status: 'success', data: userObject });
   } catch (error) {
     console.log(error);
     res
@@ -134,8 +150,11 @@ const resetPassword = async (req, res) => {
     user.password = password;
     await user.save();
 
-    // delete OTP record
-    await OTP.deleteOne({ email });
+    // delete resetToken record
+    await ResetToken.deleteOne({ email });
+
+    // delete any existing user tokens
+    await Token.deleteOne({ email });
 
     await sendNotification({
       id: user._id,
@@ -160,7 +179,7 @@ const verifyRegisterOtp = async (req, res) => {
     const { email } = req.body;
 
     // verify user email
-    const user = await User.findOneAndUpdate({ email }, { emailVerified: true });
+    const user = await User.findOneAndUpdate({ email }, { emailVerified: true }, { new: true });
 
     // delete otp record
     await OTP.deleteOne({ email });
@@ -206,7 +225,11 @@ const verifyForgotPasswordOtp = async (req, res) => {
   try {
     const { email } = req.body;
 
+    // generate reset token
     const resetToken = await sendResetToken(email);
+
+    // then delete the otp record
+    await OTP.deleteOne({ email });
     res.status(200).json({
       status: 'success',
       data: { email, resetToken },
@@ -221,6 +244,7 @@ const verifyForgotPasswordOtp = async (req, res) => {
 };
 
 const deleteProfileImage = async (req, res) => {
+  let httpStatusCode = 400;
   try {
     const user = await User.findById(req.user.userID);
 
@@ -231,6 +255,9 @@ const deleteProfileImage = async (req, res) => {
       const fileRef = ref(storage, filePath);
       await deleteObject(fileRef);
       user.profileImageUrl = '';
+    } else {
+      httpStatusCode = 404;
+      throw new Error('No profile image found');
     }
 
     const updatedUser = await user.save();
@@ -241,8 +268,8 @@ const deleteProfileImage = async (req, res) => {
     });
   } catch (error) {
     res
-      .status(400)
-      .json({ message: error.message, status: 'failed', errors: null, httpStatusCode: 400 });
+      .status(httpStatusCode)
+      .json({ message: error.message, status: 'failed', errors: null, httpStatusCode });
   }
 };
 
@@ -260,26 +287,14 @@ const login = async (req, res) => {
 };
 
 const getRefreshToken = async (req, res) => {
-  const httpStatusCode = 500;
   try {
-    const { refreshToken } = req.body;
-    if (!refreshToken) {
-      httpStatusCode = 401;
-      throw new Error('An authorization token is required');
-    }
+    const { email, userID } = req.user;
 
-    // check if refreshToken exists in database
-    const tokens = await Token.find({ refreshToken });
-    if (!tokens) {
-      httpStatusCode = 403;
-      throw new Error('Session expired. Please login to start new session');
-    }
-
-    // generate new access token
-    const { email, userID } = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+    // create new accessToken
     const accessToken = createToken({ email, userID });
-    tokens.accessToken = accessToken;
-    await tokens.save();
+    const tokenRecord = await Token.findOne({ email });
+    tokenRecord.accessToken = await hashData(accessToken);
+    await tokenRecord.save();
 
     res
       .status(200)
@@ -287,13 +302,26 @@ const getRefreshToken = async (req, res) => {
   } catch (error) {
     console.log(error);
     res
-      .status(httpStatusCode)
-      .json({ message: error.message, status: 'failed', httpStatusCode, errors: null });
+      .status(500)
+      .json({ message: error.message, status: 'failed', httpStatusCode: 500, errors: null });
+  }
+};
+
+const logout = async (req, res) => {
+  try {
+    await Token.deleteOne({ email: req.user.email });
+    res.status(200).json({ message: 'Logout successful', status: 'success', data: null });
+  } catch (error) {
+    console.log(error);
+    res
+      .status(500)
+      .json({ message: error.message, status: 'failed', httpStatusCode: 500, errors: null });
   }
 };
 
 module.exports = {
   login,
+  logout,
   // updateUser,
   registerUser,
   resetPassword,

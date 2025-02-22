@@ -6,7 +6,7 @@ const LogSchema = new Schema(
     message: { type: String, required: true, trim: true, immutable: true },
     user: { type: Schema.Types.ObjectId, immutable: false, required: true, ref: 'User' },
   },
-  { minimize: false, versionKey: false, collection: 'logs' }
+  { minimize: false, timestamps: true, collection: 'logs' }
 );
 LogSchema.plugin(mongoosePaginate);
 

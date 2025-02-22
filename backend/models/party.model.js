@@ -21,7 +21,7 @@ const PartySchema = new Schema(
     logoUrl: { type: String, default: '' },
     motto: { type: String, maxLength: 256, default: '' },
   },
-  { minimize: false, versionKey: false, collection: 'parties' }
+  { minimize: false, timestamps: true, collection: 'parties' }
 );
 PartySchema.plugin(mongoosePaginate);
 

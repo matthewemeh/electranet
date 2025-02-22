@@ -4,6 +4,7 @@ const mongoosePaginate = require('mongoose-paginate');
 
 const { ROLES } = require('../constants');
 const Token = require('../models/token.model');
+const { hashData } = require('../utils/hash.utils');
 const { createToken } = require('../utils/token.utils');
 
 const UserSchema = new Schema(
@@ -36,12 +37,19 @@ const UserSchema = new Schema(
     dateOfBirth: { type: String, trim: true, maxLength: 20, default: '' },
     otherNames: [{ type: String, trim: true, minLength: 2, maxLength: 64 }],
     password: { type: String, trim: true, required: [true, 'is required'] },
-    role: { type: String, enum: [ROLES.USER], default: ROLES.USER, immutable: true },
+    role: {
+      type: String,
+      uppercase: true,
+      immutable: true,
+      enum: [ROLES.USER],
+      default: ROLES.USER,
+    },
     emailVerified: { type: Boolean, default: false, immutable: doc => doc.emailVerified },
     gender: {
       type: String,
       trim: true,
       maxLength: 10,
+      uppercase: true,
       enum: ['MALE', 'FEMALE'],
       required: [true, 'is required'],
     },
@@ -65,7 +73,7 @@ const UserSchema = new Schema(
       },
     },
   },
-  { minimize: false, versionKey: false, collection: 'users' }
+  { minimize: false, timestamps: true, collection: 'users' }
 );
 UserSchema.plugin(mongoosePaginate);
 
@@ -79,15 +87,30 @@ UserSchema.statics.findByCredentials = async (email, password) => {
     const passwordMatches = bcrypt.compareSync(password, user.password);
     if (passwordMatches) {
       const tokenData = { email, userID: user._id };
-      const tokens = {
+      let tokens = {
         accessToken: createToken(tokenData),
-        refreshToken: createToken(tokenData, process.env.REFRESH_TOKEN_SECRET),
+        refreshToken: createToken(
+          tokenData,
+          process.env.REFRESH_TOKEN_SECRET,
+          process.env.REFRESH_TOKEN_EXPIRY
+        ),
       };
 
-      // create tokens for user
+      // store unhashed tokens for user
+      const userObject = user.toJSON();
+      userObject.tokens = { ...tokens };
+
+      // then hash the tokens
+      tokens.accessToken = await hashData(tokens.accessToken);
+      tokens.refreshToken = await hashData(tokens.refreshToken);
+
+      // delete any previous tokens
+      await Token.deleteOne({ email });
+
+      // upload hashed tokens to database
+      tokens.email = email;
       await Token.create(tokens);
-      user.tokens = tokens;
-      return user;
+      return userObject;
     }
     throw new Error('Invalid credentials');
   } catch (error) {
