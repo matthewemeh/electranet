@@ -4,7 +4,7 @@ const Token = require('../models/token.model');
 const Admin = require('../models/admin.model');
 const AdminToken = require('../models/adminToken.model');
 const { verifyHashedData } = require('../utils/hash.utils');
-const { ADMIN_TOKEN_STATUS_CODES } = require('../constants');
+const { ADMIN_TOKEN_STATUS_CODES, ROLES } = require('../constants');
 
 const { ACCESS_TOKEN_SECRET } = process.env;
 
@@ -88,6 +88,25 @@ const verifyAdminToken = async (req, res, next) => {
   return next();
 };
 
+const verifySuperAdminToken = async (req, res, next) => {
+  let httpStatusCode = 500;
+  try {
+    const { email } = req.admin;
+
+    const admin = await Admin.findOne({ email });
+    if (admin.role !== ROLES.SUPER_ADMIN) {
+      httpStatusCode = 403;
+      throw new Error('Unauthorized!');
+    }
+  } catch (error) {
+    return res
+      .status(httpStatusCode)
+      .json({ errors: null, httpStatusCode, status: 'failed', message: error.message });
+  }
+
+  return next();
+};
+
 const verifyRefreshToken = async (req, res, next) => {
   let httpStatusCode = 403;
   try {
@@ -133,4 +152,4 @@ const verifyRefreshToken = async (req, res, next) => {
   return next();
 };
 
-module.exports = { verifyToken, verifyAdminToken, verifyRefreshToken };
+module.exports = { verifyToken, verifyAdminToken, verifyRefreshToken, verifySuperAdminToken };

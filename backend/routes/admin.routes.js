@@ -6,6 +6,7 @@ const {
   verifyToken,
   verifyAdminToken,
   verifyRefreshToken,
+  verifySuperAdminToken,
 } = require('../middlewares/admin.middlewares');
 
 const {
@@ -14,6 +15,7 @@ const {
   getUser,
   getUsers,
   updateAdmin,
+  inviteAdmins,
   registerAdmin,
   resetPassword,
   getRefreshToken,
@@ -48,5 +50,7 @@ router.route('/update-admin').patch(upload.any(), verifyToken, updateAdmin);
 router.route('/get-users').get(verifyToken, verifyAdminToken, getUsers);
 
 router.route('/get-users/:id').get(verifyToken, verifyAdminToken, getUser);
+
+router.route('/invite-admins').post(verifyToken, verifySuperAdminToken, inviteAdmins);
 
 module.exports = router;

@@ -1,3 +1,4 @@
+const moment = require('moment');
 const jwt = require('jsonwebtoken');
 const { ref, uploadBytes, getDownloadURL, deleteObject } = require('firebase/storage');
 
@@ -161,9 +162,9 @@ const resetPassword = async (req, res) => {
       role: user.role,
       notifyEmail: true,
       subject: 'ELECTRANET: Password Reset Successful',
-      message: `Your password has been reset successfully on ${new Date(
-        user.updatedAt
-      ).toString()}`,
+      message: `Your password has been reset successfully on ${moment(user.updatedAt).format(
+        'LLL'
+      )}`,
     });
     res.status(200).json({ message: 'Password reset successfully', status: 'success', data: null });
   } catch (error) {

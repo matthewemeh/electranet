@@ -1,13 +1,17 @@
+const moment = require('moment');
 const { ref, uploadBytes, getDownloadURL, deleteObject } = require('firebase/storage');
 
+const Log = require('../models/log.model');
 const OTP = require('../models/otp.model');
 const User = require('../models/user.model');
 const Admin = require('../models/admin.model');
 const Token = require('../models/token.model');
 const { sendOTP } = require('../utils/otp.utils');
 const { hashData } = require('../utils/hash.utils');
+const { sendEmail } = require('../utils/email.utils');
 const storage = require('../configs/firebase.config');
 const ResetToken = require('../models/resetToken.model');
+const AdminToken = require('../models/adminToken.model');
 const { checkIfFileExists } = require('../utils/firebase.utils');
 const { sendNotification } = require('../utils/notification.utils');
 const { createToken, sendResetToken } = require('../utils/token.utils');
@@ -150,9 +154,9 @@ const resetPassword = async (req, res) => {
       role: admin.role,
       notifyEmail: true,
       subject: 'ELECTRANET: Password Reset Successful',
-      message: `Your password has been reset successfully on ${new Date(
-        admin.updatedAt
-      ).toString()}`,
+      message: `Your password has been reset successfully on ${moment(admin.updatedAt).format(
+        'LLL'
+      )}`,
     });
 
     res.status(200).json({ message: 'Password reset successfully', status: 'success', data: null });
@@ -341,12 +345,75 @@ const logout = async (req, res) => {
   }
 };
 
+const inviteAdmins = (req, res) => {
+  let httpStatusCode = 500;
+  try {
+    const MAX_INVITEES_PER_CALL = 10;
+    const { invitees } = req.body;
+    if (!invitees || invitees.length === 0) {
+      httpStatusCode = 400;
+      throw new Error("Provide 'invitees' array field");
+    } else if (invitees.length > MAX_INVITEES_PER_CALL) {
+      httpStatusCode = 400;
+      throw new Error(`You can invite a maximum of ${MAX_INVITEES_PER_CALL} admins at a time`);
+    }
+
+    const invitedResults = { success: [], failure: [] };
+    invitees.forEach(async ({ email, expiresAt, createdAt }) => {
+      try {
+        const admin = await Admin.findOne({ email });
+        if (!admin) {
+          throw new Error('Email has not been registered as an admin on the plaform');
+        } else if (email === req.admin.email) {
+          throw new Error(
+            'Redundant invite: this email is owned by a Super-Admin who has highest authority'
+          );
+        } else if (!admin.emailVerified) {
+          throw new Error('This email is not verified yet');
+        }
+
+        await AdminToken.create({
+          email,
+          createdAt,
+          expiresAt,
+          status: { statusStart: Date.now() },
+        });
+
+        await sendEmail({
+          email,
+          subject: 'ELECTRANET: Admin Invite',
+          html: `<p>Hello from Electranet! You have been invited as an Admin on ELECTRANET. You will aid users who come to the polling unit with their voting process</p>
+        <p>Your Admin access will expire on ${moment(expiresAt).format('LLL')}</p>`,
+        });
+
+        await Log.create({
+          action: 'INVITE',
+          admin: admin.adminID,
+          message: `Invited Admin with email: ${email}`,
+        });
+
+        invitedResults.success.push({ email, reason: 'All checks passed' });
+      } catch (error) {
+        console.log(error);
+        invitedResults.failure.push({ email, reason: error.message });
+      }
+    });
+    res.status(200).json({ message: 'Invitations sent', status: 'success', data: invitedResults });
+  } catch (error) {
+    console.log(error);
+    res
+      .status(httpStatusCode)
+      .json({ message: error.message, status: 'failed', httpStatusCode, errors: null });
+  }
+};
+
 module.exports = {
   login,
   logout,
   getUser,
   getUsers,
   updateAdmin,
+  inviteAdmins,
   registerAdmin,
   resetPassword,
   getRefreshToken,
