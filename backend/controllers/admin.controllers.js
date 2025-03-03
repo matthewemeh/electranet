@@ -17,28 +17,21 @@ const { sendNotification } = require('../utils/notification.utils');
 const { createToken, sendResetToken } = require('../utils/token.utils');
 
 /* Multipart key information */
-const { USER_PAYLOAD_KEY, PROFILE_IMAGE_KEY, ROLES } = require('../constants');
+const { PAYLOAD_KEY, MEDIA_IMAGE_KEY, ROLES } = require('../constants');
 
 const registerAdmin = async (req, res) => {
   let httpStatusCode = 400;
   try {
     const adminPayload = JSON.parse(
-      req.files?.find(({ fieldname }) => fieldname === USER_PAYLOAD_KEY)?.buffer ?? '{}'
+      req.files?.find(({ fieldname }) => fieldname === PAYLOAD_KEY)?.buffer ?? '{}'
     );
-
-    // Check for duplicate email
-    const adminEmailExists = await Admin.findOne({ email: adminPayload.email });
-    if (adminEmailExists) {
-      httpStatusCode = 409;
-      throw new Error(`This email: ${adminPayload.email} is already registered on the platform`);
-    }
 
     // Check for duplicate email in user accounts
     const duplicateAccountExists = await User.findOne({ email: adminPayload.email });
     if (duplicateAccountExists) {
       httpStatusCode = 409;
       throw new Error(
-        `This email: ${adminPayload.email} is already registered as an user on the platform`
+        `This email: ${adminPayload.email} is already registered as a user on the platform`
       );
     }
 
@@ -48,21 +41,20 @@ const registerAdmin = async (req, res) => {
       throw new Error('A Super-Admin already exists on the platform');
     }
 
+    const admin = new Admin(adminPayload);
+
     // upload admin profile image (if any) to firebase database
-    const profileImage = req.files?.find(
-      ({ fieldname }) => fieldname === PROFILE_IMAGE_KEY
-    )?.buffer;
-    const newAdmin = new Admin(adminPayload);
+    const profileImage = req.files?.find(({ fieldname }) => fieldname === MEDIA_IMAGE_KEY)?.buffer;
     if (profileImage) {
-      const imageRef = ref(storage, `admins/${newAdmin._id}`);
+      const imageRef = ref(storage, `electranet/admins/${admin._id}`);
       const snapshot = await uploadBytes(imageRef, profileImage);
       const url = await getDownloadURL(snapshot.ref);
-      newAdmin.profileImageUrl = url;
+      admin.profileImageUrl = url;
     }
-    const admin = await newAdmin.save();
+    await admin.save();
 
     // after successful admin registration, add tokens to admin object before sending to client
-    const tokenData = { issuedAt: Date.now(), email: admin.email, adminID: admin._id };
+    const tokenData = { issuedAt: Date.now(), email: admin.email, _id: admin._id };
     let tokens = {
       accessToken: createToken(tokenData),
       refreshToken: createToken(
@@ -98,33 +90,23 @@ const registerAdmin = async (req, res) => {
   }
 };
 
-const updateAdmin = async (req, res) => {
-  // only profile image can be updated
+const updateProfileImage = async (req, res) => {
   try {
-    // const adminPayload = JSON.parse(
-    //   req.files?.find(({ fieldname }) => fieldname === USER_PAYLOAD_KEY)?.buffer
-    // );
-
-    const { adminID } = req.admin;
-    const admin = await Admin.findById(adminID);
+    const { admin } = req;
 
     // upload admin's updated profile image (if any) to firebase database
-    const profileImage = req.files?.find(
-      ({ fieldname }) => fieldname === PROFILE_IMAGE_KEY
-    )?.buffer;
+    const profileImage = req.files?.find(({ fieldname }) => fieldname === MEDIA_IMAGE_KEY)?.buffer;
     if (profileImage) {
-      const imageRef = ref(storage, `admins/${adminID}`);
+      const imageRef = ref(storage, `electranet/admins/${admin._id}`);
       const snapshot = await uploadBytes(imageRef, profileImage);
       const url = await getDownloadURL(snapshot.ref);
+      await Admin.updateOne({ email: admin.email }, { profileImageUrl: url });
       admin.profileImageUrl = url;
     }
 
-    const updatedAdmin = await admin.save();
-    res.status(200).json({
-      status: 'success',
-      data: updatedAdmin,
-      message: 'Admin details updated successfully',
-    });
+    res
+      .status(200)
+      .json({ data: admin, status: 'success', message: 'Admin details updated successfully' });
   } catch (error) {
     console.log(error);
     res
@@ -240,26 +222,24 @@ const verifyForgotPasswordOtp = async (req, res) => {
 const deleteProfileImage = async (req, res) => {
   let httpStatusCode = 400;
   try {
-    const admin = await Admin.findById(req.admin.adminID);
+    const { admin } = req;
 
     // delete admin image
-    const filePath = `admins/${admin._id}`;
+    const filePath = `electranet/admins/${admin._id}`;
     const fileExists = await checkIfFileExists(filePath);
     if (fileExists) {
       const fileRef = ref(storage, filePath);
       await deleteObject(fileRef);
+      await Admin.updateOne({ email: admin.email }, { profileImageUrl: '' });
       admin.profileImageUrl = '';
     } else {
       httpStatusCode = 404;
       throw new Error('No profile image found');
     }
 
-    const updatedAdmin = await admin.save();
-    res.status(200).json({
-      status: 'success',
-      data: updatedAdmin,
-      message: 'Profile image deleted successfully',
-    });
+    res
+      .status(200)
+      .json({ data: admin, status: 'success', message: 'Profile image deleted successfully' });
   } catch (error) {
     res
       .status(httpStatusCode)
@@ -314,10 +294,10 @@ const getUser = async (req, res) => {
 
 const getRefreshToken = async (req, res) => {
   try {
-    const { email, adminID } = req.admin;
+    const { email, _id } = req.admin;
 
     // create new accessToken
-    const accessToken = createToken({ issuedAt: Date.now(), email, adminID });
+    const accessToken = createToken({ issuedAt: Date.now(), email, _id });
     const tokenRecord = await Token.findOne({ email });
     tokenRecord.accessToken = await hashData(accessToken);
     await tokenRecord.save();
@@ -388,7 +368,7 @@ const inviteAdmins = (req, res) => {
 
         await Log.create({
           action: 'INVITE',
-          admin: admin.adminID,
+          admin: req.admin._id,
           message: `Invited Admin with email: ${email}`,
         });
 
@@ -412,13 +392,13 @@ module.exports = {
   logout,
   getUser,
   getUsers,
-  updateAdmin,
   inviteAdmins,
   registerAdmin,
   resetPassword,
   getRefreshToken,
   verifyRegisterOtp,
   deleteProfileImage,
+  updateProfileImage,
   forgotPasswordInitiate,
   verifyForgotPasswordOtp,
 };

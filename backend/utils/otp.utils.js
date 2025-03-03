@@ -31,7 +31,7 @@ const sendOTP = async ({ email, subject, duration = 5 }) => {
     <strong style="font-size:25px;letter-spacing:2px">${generatedOTP}</strong>
     <p>This code expires in ${duration} minute(s).</p>
     <p>If you did not initiate the process that sent this email, please disregard this email. Your privacy is important to us.</p>
-    <p>Best regards,<span style="display:block;">Electranet.</span></p>
+    <p>Best regards,<span style="display:block">Electranet.</span></p>
     `;
 
     // save otp record

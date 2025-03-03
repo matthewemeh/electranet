@@ -18,10 +18,9 @@ const verifyToken = async (req, res, next) => {
     }
 
     const decodedUser = jwt.verify(token, ACCESS_TOKEN_SECRET);
-    req.user = decodedUser;
 
     // check if token exists in database
-    const tokenRecord = await Token.findOne({ email: req.user.email });
+    const tokenRecord = await Token.findOne({ email: decodedUser.email });
     if (!tokenRecord) {
       httpStatusCode = 404;
       throw new Error('No token available');
@@ -35,11 +34,13 @@ const verifyToken = async (req, res, next) => {
     }
 
     // check if user exists in database
-    const user = await User.findById(req.user.userID);
+    const user = await User.findById(decodedUser._id);
     if (!user) {
       httpStatusCode = 500;
       throw new Error('User does not exist on this platform');
     }
+
+    req.user = user;
   } catch (error) {
     if (httpStatusCode === 403) {
       error.message = 'Session expired.';
@@ -64,10 +65,9 @@ const verifyRefreshToken = async (req, res, next) => {
 
     // verify refresh token
     const decodedUser = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
-    req.user = decodedUser;
 
     // check if refreshToken exists in database
-    const tokenRecord = await Token.findOne({ email: req.user.email });
+    const tokenRecord = await Token.findOne({ email: decodedUser.email });
     if (!tokenRecord) {
       httpStatusCode = 404;
       throw new Error('No refresh token available');
@@ -81,11 +81,13 @@ const verifyRefreshToken = async (req, res, next) => {
     }
 
     // check if user exists in database
-    const user = await User.findById(req.user.userID);
+    const user = await User.findById(decodedUser._id);
     if (!user) {
       httpStatusCode = 500;
       throw new Error('User does not exist on this platform');
     }
+
+    req.user = user;
   } catch (error) {
     if (httpStatusCode === 403) {
       error.message = 'Session expired. Please login to start new session';

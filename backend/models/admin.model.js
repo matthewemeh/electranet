@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
 const { Schema, model } = require('mongoose');
-const mongoosePaginate = require('mongoose-paginate');
+const mongoosePaginate = require('mongoose-paginate-v2');
 
 const { ROLES } = require('../constants');
 const Token = require('../models/token.model');
@@ -14,6 +14,7 @@ const AdminSchema = new Schema(
       trim: true,
       minLength: 2,
       maxLength: 64,
+      immutable: true,
       required: [true, 'is required'],
     },
     lastName: {
@@ -21,6 +22,7 @@ const AdminSchema = new Schema(
       trim: true,
       minLength: 2,
       maxLength: 64,
+      immutable: true,
       required: [true, 'is required'],
     },
     profileImageUrl: { type: String, default: '' },
@@ -37,9 +39,8 @@ const AdminSchema = new Schema(
     email: {
       type: String,
       trim: true,
-      index: true,
-      unique: true,
       immutable: true,
+      index: { unique: true },
       required: [true, 'is required'],
       validate: {
         validator: str => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(str),
@@ -60,7 +61,7 @@ AdminSchema.statics.findByCredentials = async (email, password) => {
 
     const passwordMatches = bcrypt.compareSync(password, admin.password);
     if (passwordMatches) {
-      const tokenData = { issuedAt: Date.now(), email, adminID: admin._id };
+      const tokenData = { issuedAt: Date.now(), email, _id: admin._id };
       let tokens = {
         accessToken: createToken(tokenData),
         refreshToken: createToken(

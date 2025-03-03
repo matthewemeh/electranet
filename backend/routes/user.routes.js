@@ -7,12 +7,10 @@ const { verifyToken, verifyRefreshToken } = require('../middlewares/user.middlew
 const {
   login,
   logout,
-  // updateUser,
   registerUser,
   resetPassword,
   getRefreshToken,
   verifyRegisterOtp,
-  deleteProfileImage,
   forgotPasswordInitiate,
   verifyForgotPasswordOtp,
 } = require('../controllers/user.controllers');
@@ -33,11 +31,6 @@ router.route('/auth/forgot-password/verify-otp').post(verifyOtp, verifyForgotPas
 
 router.route('/auth/forgot-password/reset').patch(verifyResetToken, resetPassword);
 
-router.route('/delete-profile-image').patch(verifyToken, deleteProfileImage);
-
 router.route('/refresh-token').post(verifyRefreshToken, getRefreshToken);
-
-// Please refer to block comment above the (commented) updateUser controller in user.controllers.js
-// router.route('/update-user').patch(upload.any(), verifyToken, updateUser);
 
 module.exports = router;

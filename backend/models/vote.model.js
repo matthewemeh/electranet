@@ -1,12 +1,13 @@
 const { Schema, model } = require('mongoose');
-const mongoosePaginate = require('mongoose-paginate');
+const encryption = require('mongoose-encryption');
+const mongoosePaginate = require('mongoose-paginate-v2');
 
 const VoteData = new Schema(
   {
     party: { type: Schema.Types.ObjectId, ref: 'Party', required: true },
     election: { type: Schema.Types.ObjectId, ref: 'Election', required: true },
   },
-  { minimize: false, versionKey: false }
+  { minimize: false, versionKey: false, id: false }
 );
 
 const VoteSchema = new Schema(
@@ -21,6 +22,17 @@ const VoteSchema = new Schema(
   { minimize: false, collection: 'votes' }
 );
 VoteSchema.plugin(mongoosePaginate);
+VoteSchema.plugin(encryption, { secret: process.env.MONGO_DB_SECRET });
+
+/* Before returning json response to client, remove the password field */
+VoteSchema.methods.toJSON = function () {
+  const vote = this.toObject();
+  delete vote.index;
+  delete vote.isTailNode;
+  delete vote.previousHash;
+  delete vote.data.party;
+  return vote;
+};
 
 const Vote = model('Vote', VoteSchema);
 

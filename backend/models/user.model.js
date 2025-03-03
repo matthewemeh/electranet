@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
 const { Schema, model } = require('mongoose');
-const mongoosePaginate = require('mongoose-paginate');
+const mongoosePaginate = require('mongoose-paginate-v2');
 
 const { ROLES } = require('../constants');
 const Token = require('../models/token.model');
@@ -12,8 +12,8 @@ const UserSchema = new Schema(
     vin: {
       type: String,
       trim: true,
-      unique: true,
       immutable: true,
+      index: { unique: true },
       required: [true, 'is required'],
     },
     firstName: {
@@ -21,6 +21,7 @@ const UserSchema = new Schema(
       trim: true,
       minLength: 2,
       maxLength: 64,
+      immutable: true,
       required: [true, 'is required'],
     },
     lastName: {
@@ -28,13 +29,14 @@ const UserSchema = new Schema(
       trim: true,
       minLength: 2,
       maxLength: 64,
+      immutable: true,
       required: [true, 'is required'],
     },
-    profileImageUrl: { type: String, default: '' },
-    address: { type: String, trim: true, maxLength: 256, default: '' },
+    profileImageUrl: { type: String, default: '', immutable: true },
+    address: { type: String, trim: true, maxLength: 256, default: '', immutable: true },
     electionsVoted: [{ type: Schema.Types.ObjectId, ref: 'Election' }],
-    occupation: { type: String, trim: true, maxLength: 64, default: '' },
-    dateOfBirth: { type: String, trim: true, maxLength: 20, default: '' },
+    occupation: { type: String, trim: true, maxLength: 64, default: '', immutable: true },
+    dateOfBirth: { type: String, trim: true, maxLength: 20, default: '', immutable: true },
     otherNames: [{ type: String, trim: true, minLength: 2, maxLength: 64 }],
     password: { type: String, trim: true, required: [true, 'is required'] },
     role: {
@@ -49,6 +51,7 @@ const UserSchema = new Schema(
       type: String,
       trim: true,
       maxLength: 10,
+      immutable: true,
       uppercase: true,
       enum: ['MALE', 'FEMALE'],
       required: [true, 'is required'],
@@ -63,9 +66,8 @@ const UserSchema = new Schema(
     email: {
       type: String,
       trim: true,
-      index: true,
-      unique: true,
       immutable: true,
+      index: { unique: true },
       required: [true, 'is required'],
       validate: {
         validator: str => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(str),
@@ -86,7 +88,7 @@ UserSchema.statics.findByCredentials = async (email, password) => {
 
     const passwordMatches = bcrypt.compareSync(password, user.password);
     if (passwordMatches) {
-      const tokenData = { issuedAt: Date.now(), email, userID: user._id };
+      const tokenData = { issuedAt: Date.now(), email, _id: user._id };
       let tokens = {
         accessToken: createToken(tokenData),
         refreshToken: createToken(

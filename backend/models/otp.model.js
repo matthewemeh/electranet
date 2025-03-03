@@ -8,9 +8,8 @@ const OTPSchema = new Schema(
     email: {
       type: String,
       trim: true,
-      index: true,
-      unique: true,
       immutable: true,
+      index: { unique: true },
       required: [true, 'is required'],
       validate: {
         validator: str => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(str),

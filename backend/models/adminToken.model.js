@@ -12,7 +12,7 @@ const StatusSchema = new Schema(
       enum: Object.values(ADMIN_TOKEN_STATUS_CODES),
     },
   },
-  { minimize: false, versionKey: false }
+  { minimize: false, versionKey: false, id: false }
 );
 
 // These tokens are for managing admin rights
@@ -24,9 +24,8 @@ const AdminTokenSchema = new Schema(
     email: {
       type: String,
       trim: true,
-      index: true,
-      unique: true,
       immutable: true,
+      index: { unique: true },
       required: [true, 'is required'],
       validate: {
         validator: str => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(str),

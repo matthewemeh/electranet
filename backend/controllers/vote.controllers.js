@@ -2,17 +2,15 @@ const SHA256 = require('crypto-js/sha256');
 
 const User = require('../models/user.model');
 const Vote = require('../models/vote.model');
+const Election = require('../models/election.model');
+const { sendEmail } = require('../utils/email.utils');
+const { validateVote } = require('../utils/vote.utils');
+const { sendNotification } = require('../utils/notification.utils');
 
 const castVote = async (req, res) => {
   try {
-    const { userID } = req.user;
+    const { election, user } = req;
     const { electionID, partyID } = req.body;
-
-    // check if user has voted before
-    const user = await User.findById(userID);
-    if (user.electionsVoted.indexOf(electionID) !== -1) {
-      throw new Error('You have voted for this election already!');
-    }
 
     // find last vote for that election
     const lastVote = await Vote.findOne({ 'data.election': electionID, isTailVoteNode: true });
@@ -43,13 +41,37 @@ const castVote = async (req, res) => {
     ).toString();
 
     // add vote to blockchain of votes
-    await Vote.create(votePayload);
+    const vote = await Vote.create(votePayload);
 
     // update the user's voted elections
+    await User.updateOne({ email: user.email }, { $push: { electionsVoted: electionID } });
     user.electionsVoted.push(electionID);
-    await user.save();
 
-    res.status(200).json({ message: 'Voted casted successfully', status: 'success', data: user });
+    await sendNotification({
+      id: user._id,
+      role: user.role,
+      message: `You voted in the ${election.name} at ${moment(vote.createdAt).format(
+        'LLL'
+      )}. Your VoteID: ${vote._id} can be used to verify your vote`,
+    });
+
+    await sendEmail({
+      email: user.email,
+      subject: 'ELECTRANET: Vote cast successfully',
+      html: `<p>Hello from Electranet!</p>
+    <p>You voted in the ${election.name} at ${moment(vote.createdAt).format(
+        'LLL'
+      )}. You can use your VoteID below to verify your vote:</p>
+    <em>${vote._id}</em>
+    <p>Best regards,<span style="display:block;">Electranet.</span></p>
+    `,
+    });
+
+    res.status(200).json({
+      status: 'success',
+      data: { user, voteID: vote._id },
+      message: 'Voted casted successfully',
+    });
   } catch (error) {
     res
       .status(400)
@@ -57,4 +79,60 @@ const castVote = async (req, res) => {
   }
 };
 
-module.exports = { castVote };
+const verifyUserVote = async (req, res) => {
+  let httpStatusCode = 400;
+  try {
+    const vote = await Vote.findById(req.body.voteID);
+
+    if (!vote) {
+      httpStatusCode = 404;
+      throw new Error('Vote not found');
+    }
+
+    const previousVote = await Vote.findOne({
+      index: vote.index - 1,
+      'data.election': vote.data.election,
+    });
+    const election = await Election.findById(vote.data.election);
+    const result = {
+      election,
+      status: 'failed',
+      message: 'Vote verification failed. Vote compromised!',
+    };
+
+    if (validateVote(vote, previousVote)) {
+      result.status = 'success';
+      result.message = 'Vote verification successful';
+    }
+
+    res.status(200).json({ message: 'Vote checked successfully', status: 'success', data: result });
+  } catch (error) {
+    res
+      .status(httpStatusCode)
+      .json({ message: error.message, status: 'failed', httpStatusCode, errors: null });
+  }
+};
+
+const getVotes = async (req, res) => {
+  try {
+    const { electionID } = req.query;
+    const page = Number(req.query.page ?? 1);
+    const limit = Number(req.query.limit ?? 10);
+
+    const queryFields = {};
+    if (electionID) {
+      queryFields['data.election'] = electionID;
+    }
+    const paginatedVotes = Vote.paginate(queryFields, { page, limit, sort: { timestamp: -1 } });
+
+    res
+      .status(200)
+      .json({ message: 'Votes fetched successfully', status: 'success', data: paginatedVotes });
+  } catch (error) {
+    res
+      .status(500)
+      .json({ message: error.message, status: 'failed', httpStatusCode: 500, errors: null });
+  }
+};
+
+module.exports = { castVote, verifyUserVote, getVotes };

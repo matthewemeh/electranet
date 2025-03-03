@@ -30,6 +30,7 @@ app.use('/api/v1/otps', require('./routes/otp.routes'));
 app.use('/api/v1/votes', require('./routes/vote.routes'));
 app.use('/api/v1/users', require('./routes/user.routes'));
 app.use('/api/v1/admins', require('./routes/admin.routes'));
+app.use('/api/v1/elections', require('./routes/election.routes'));
 
 app.use(express.urlencoded({ extended: true }));
 

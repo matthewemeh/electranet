@@ -5,8 +5,8 @@ const { verifyOtp, verifyResetToken } = require('../middlewares/index.middleware
 const {
   verifyToken,
   verifyAdminToken,
+  verifySuperAdmin,
   verifyRefreshToken,
-  verifySuperAdminToken,
 } = require('../middlewares/admin.middlewares');
 
 const {
@@ -14,13 +14,13 @@ const {
   logout,
   getUser,
   getUsers,
-  updateAdmin,
   inviteAdmins,
   registerAdmin,
   resetPassword,
   getRefreshToken,
   verifyRegisterOtp,
   deleteProfileImage,
+  updateProfileImage,
   forgotPasswordInitiate,
   verifyForgotPasswordOtp,
 } = require('../controllers/admin.controllers');
@@ -45,12 +45,12 @@ router.route('/delete-profile-image').patch(verifyToken, deleteProfileImage);
 
 router.route('/refresh-token').post(verifyRefreshToken, getRefreshToken);
 
-router.route('/update-admin').patch(upload.any(), verifyToken, updateAdmin);
+router.route('/update-profile-image').patch(verifyToken, upload.any(), updateProfileImage);
 
 router.route('/get-users').get(verifyToken, verifyAdminToken, getUsers);
 
 router.route('/get-users/:id').get(verifyToken, verifyAdminToken, getUser);
 
-router.route('/invite-admins').post(verifyToken, verifySuperAdminToken, inviteAdmins);
+router.route('/invite-admins').post(verifyToken, verifySuperAdmin, inviteAdmins);
 
 module.exports = router;

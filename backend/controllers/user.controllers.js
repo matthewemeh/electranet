@@ -1,5 +1,4 @@
 const moment = require('moment');
-const jwt = require('jsonwebtoken');
 const { ref, uploadBytes, getDownloadURL, deleteObject } = require('firebase/storage');
 
 const OTP = require('../models/otp.model');
@@ -15,32 +14,18 @@ const { sendNotification } = require('../utils/notification.utils');
 const { createToken, sendResetToken } = require('../utils/token.utils');
 
 /* Multipart key information */
-const { USER_PAYLOAD_KEY, PROFILE_IMAGE_KEY } = require('../constants');
+const { PAYLOAD_KEY, MEDIA_IMAGE_KEY } = require('../constants');
 
 const registerUser = async (req, res) => {
   let httpStatusCode = 400;
   try {
     const userPayload = JSON.parse(
-      req.files?.find(({ fieldname }) => fieldname === USER_PAYLOAD_KEY)?.buffer ?? '{}'
+      req.files?.find(({ fieldname }) => fieldname === PAYLOAD_KEY)?.buffer ?? '{}'
     );
 
     // TODO: Integrate VIN verification using 3rd party API
     // If VIN verification is successful, then user registration can proceed
     // else, the process is terminated.
-
-    // Check for duplicate VIN
-    const userVinExists = await User.findOne({ vin: userPayload.vin });
-    if (userVinExists) {
-      httpStatusCode = 409;
-      throw new Error(`This vin: ${userPayload.vin} is already registered on the platform`);
-    }
-
-    // Check for duplicate email
-    const userEmailExists = await User.findOne({ email: userPayload.email });
-    if (userEmailExists) {
-      httpStatusCode = 409;
-      throw new Error(`This email: ${userPayload.email} is already registered on the platform`);
-    }
 
     // Check for duplicate email in admin accounts
     const duplicateAccountExists = await Admin.findOne({ email: userPayload.email });
@@ -51,21 +36,20 @@ const registerUser = async (req, res) => {
       );
     }
 
+    const user = new User(userPayload);
+
     // upload user profile image (if any) to firebase database
-    const profileImage = req.files?.find(
-      ({ fieldname }) => fieldname === PROFILE_IMAGE_KEY
-    )?.buffer;
-    const newUser = new User(userPayload);
+    const profileImage = req.files?.find(({ fieldname }) => fieldname === MEDIA_IMAGE_KEY)?.buffer;
     if (profileImage) {
-      const imageRef = ref(storage, `users/${newUser._id}`);
+      const imageRef = ref(storage, `electranet/users/${user._id}`);
       const snapshot = await uploadBytes(imageRef, profileImage);
       const url = await getDownloadURL(snapshot.ref);
-      newUser.profileImageUrl = url;
+      user.profileImageUrl = url;
     }
-    const user = await newUser.save();
+    await user.save();
 
     // after successful user registration, add tokens to user object before sending to client
-    const tokenData = { issuedAt: Date.now(), email: user.email, userID: user._id };
+    const tokenData = { issuedAt: Date.now(), email: user.email, _id: user._id };
     let tokens = {
       accessToken: createToken(tokenData),
       refreshToken: createToken(
@@ -100,46 +84,6 @@ const registerUser = async (req, res) => {
       .json({ errors: null, status: 'failed', httpStatusCode, message: error.message });
   }
 };
-
-/**
- * Under normal circumstances the user should not be able to update any information
- * because all the user information should have been fetched and set (immutable) from the
- * 3rd party API specified in the TODO comment in the registerUser controller.
- *
- * For now, the updateUser controller will be disabled (commented out) and can be re-enabled in the future
- * should a cogent need for its use arise.
- */
-/* const updateUser = async (req, res) => {
-  // only profile image can be updated
-  try {
-    // const userPayload = JSON.parse(
-    //   req.files.find(({ fieldname }) => fieldname === USER_PAYLOAD_KEY).buffer
-    // );
-
-    const { userID } = req.user;
-    const user = await User.findById(userID);
-    if (password) user.password = password;
-
-    // upload user's updated profile image (if any) to firebase database
-    const profileImage = req.files.find(({ fieldname }) => fieldname === PROFILE_IMAGE_KEY)?.buffer;
-    if (profileImage) {
-      const imageRef = ref(storage, `users/${userID}`);
-      const snapshot = await uploadBytes(imageRef, profileImage);
-      const url = await getDownloadURL(snapshot.ref);
-      user.profileImageUrl = url;
-    }
-
-    const updatedUser = await user.save();
-    res
-      .status(200)
-      .json({ message: 'User details updated successfully', status: 'success', data: updatedUser });
-  } catch (error) {
-    console.log(error);
-    res
-      .status(400)
-      .json({ errors: null, status: 'failed', httpStatusCode: 400, message: error.message });
-  }
-}; */
 
 const resetPassword = async (req, res) => {
   let httpStatusCode = 400;
@@ -244,36 +188,6 @@ const verifyForgotPasswordOtp = async (req, res) => {
   }
 };
 
-const deleteProfileImage = async (req, res) => {
-  let httpStatusCode = 400;
-  try {
-    const user = await User.findById(req.user.userID);
-
-    // delete user image
-    const filePath = `users/${user._id}`;
-    const fileExists = await checkIfFileExists(filePath);
-    if (fileExists) {
-      const fileRef = ref(storage, filePath);
-      await deleteObject(fileRef);
-      user.profileImageUrl = '';
-    } else {
-      httpStatusCode = 404;
-      throw new Error('No profile image found');
-    }
-
-    const updatedUser = await user.save();
-    res.status(200).json({
-      status: 'success',
-      data: updatedUser,
-      message: 'Profile image deleted successfully',
-    });
-  } catch (error) {
-    res
-      .status(httpStatusCode)
-      .json({ message: error.message, status: 'failed', errors: null, httpStatusCode });
-  }
-};
-
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -289,10 +203,10 @@ const login = async (req, res) => {
 
 const getRefreshToken = async (req, res) => {
   try {
-    const { email, userID } = req.user;
+    const { email, _id } = req.user;
 
     // create new accessToken
-    const accessToken = createToken({ issuedAt: Date.now(), email, userID });
+    const accessToken = createToken({ issuedAt: Date.now(), email, _id });
     const tokenRecord = await Token.findOne({ email });
     tokenRecord.accessToken = await hashData(accessToken);
     await tokenRecord.save();
@@ -323,12 +237,10 @@ const logout = async (req, res) => {
 module.exports = {
   login,
   logout,
-  // updateUser,
   registerUser,
   resetPassword,
   getRefreshToken,
   verifyRegisterOtp,
-  deleteProfileImage,
   forgotPasswordInitiate,
   verifyForgotPasswordOtp,
 };

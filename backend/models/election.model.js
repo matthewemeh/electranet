@@ -1,5 +1,5 @@
 const { Schema, model } = require('mongoose');
-const mongoosePaginate = require('mongoose-paginate');
+const mongoosePaginate = require('mongoose-paginate-v2');
 
 const ElectionSchema = new Schema(
   {
@@ -9,21 +9,35 @@ const ElectionSchema = new Schema(
       minLength: 2,
       maxLength: 256,
       required: [true, 'is required'],
+      immutable: doc => Date.now() >= doc.startTime,
+    },
+    endTime: {
+      type: Date,
+      required: true,
+      validate: {
+        validator: function (value) {
+          return value > this.startTime;
+        },
+        message: props => `${props.value} should not be earlier than startTime`,
+      },
       immutable: doc => Date.now() >= doc.endTime,
     },
-    endTime: { type: Date, required: true, immutable: doc => Date.now() >= doc.endTime },
     startTime: {
       type: Date,
       required: true,
-      min: new Date().toISOString(),
+      validate: {
+        validator: function (value) {
+          return value < this.endTime;
+        },
+        message: props => `${props.value} should not be later than endTime`,
+      },
       immutable: doc => Date.now() >= doc.startTime,
     },
-    contestants: [{ type: Schema.Types.ObjectId, ref: 'Contestant' }],
     delimitationCode: {
       type: String,
       trim: true,
+      default: '',
       maxLength: 20,
-      required: true,
       immutable: doc => Date.now() >= doc.startTime,
     },
   },

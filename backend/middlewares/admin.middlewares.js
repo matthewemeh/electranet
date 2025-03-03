@@ -20,10 +20,9 @@ const verifyToken = async (req, res, next) => {
     }
 
     const decodedAdmin = jwt.verify(token, ACCESS_TOKEN_SECRET);
-    req.admin = decodedAdmin;
 
     // check if token exists in database
-    const tokenRecord = await Token.findOne({ email: req.admin.email });
+    const tokenRecord = await Token.findOne({ email: decodedAdmin.email });
     if (!tokenRecord) {
       httpStatusCode = 404;
       throw new Error('No token available');
@@ -37,11 +36,13 @@ const verifyToken = async (req, res, next) => {
     }
 
     // check if admin exists in database
-    const admin = await Admin.findById(req.admin.adminID);
+    const admin = await Admin.findById(decodedAdmin._id);
     if (!admin) {
       httpStatusCode = 500;
       throw new Error('Admin does not exist on this platform');
     }
+
+    req.admin = admin;
   } catch (error) {
     if (httpStatusCode === 403) {
       error.message = 'Session expired.';
@@ -57,7 +58,11 @@ const verifyToken = async (req, res, next) => {
 const verifyAdminToken = async (req, res, next) => {
   let httpStatusCode = 500;
   try {
-    const { email } = req.admin;
+    const { email, role } = req.admin;
+
+    if (role === ROLES.SUPER_ADMIN) {
+      return next();
+    }
 
     // check if admin token record exists in database
     const adminToken = await AdminToken.findOne({ email });
@@ -88,13 +93,10 @@ const verifyAdminToken = async (req, res, next) => {
   return next();
 };
 
-const verifySuperAdminToken = async (req, res, next) => {
+const verifySuperAdmin = async (req, res, next) => {
   let httpStatusCode = 500;
   try {
-    const { email } = req.admin;
-
-    const admin = await Admin.findOne({ email });
-    if (admin.role !== ROLES.SUPER_ADMIN) {
+    if (req.admin.role !== ROLES.SUPER_ADMIN) {
       httpStatusCode = 403;
       throw new Error('Unauthorized!');
     }
@@ -118,10 +120,9 @@ const verifyRefreshToken = async (req, res, next) => {
 
     // verify refresh token
     const decodedAdmin = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
-    req.admin = decodedAdmin;
 
     // check if refreshToken exists in database
-    const tokenRecord = await Token.findOne({ email: req.admin.email });
+    const tokenRecord = await Token.findOne({ email: decodedAdmin.email });
     if (!tokenRecord) {
       httpStatusCode = 404;
       throw new Error('No refresh token available');
@@ -135,11 +136,13 @@ const verifyRefreshToken = async (req, res, next) => {
     }
 
     // check if admin exists in database
-    const admin = await Admin.findById(req.admin.adminID);
+    const admin = await Admin.findById(decodedAdmin._id);
     if (!admin) {
       httpStatusCode = 500;
       throw new Error('Admin does not exist on this platform');
     }
+
+    req.admin = admin;
   } catch (error) {
     if (httpStatusCode === 403) {
       error.message = 'Session expired. Please login to start new session';
@@ -152,4 +155,4 @@ const verifyRefreshToken = async (req, res, next) => {
   return next();
 };
 
-module.exports = { verifyToken, verifyAdminToken, verifyRefreshToken, verifySuperAdminToken };
+module.exports = { verifyToken, verifyAdminToken, verifyRefreshToken, verifySuperAdmin };

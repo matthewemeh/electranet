@@ -1,9 +1,13 @@
 const router = require('express').Router();
 
-const { castVote } = require('../controllers/vote.controllers');
 const { verifyVote } = require('../middlewares/vote.middlewares');
 const { verifyToken } = require('../middlewares/user.middlewares');
+const { castVote, verifyUserVote, getVotes } = require('../controllers/vote.controllers');
 
-router.route('/cast').post(verifyToken, verifyVote, castVote);
+router.route('/cast-vote').post(verifyToken, verifyVote, castVote);
+
+router.route('/verify-vote').post(verifyUserVote);
+
+router.route('/').get(getVotes);
 
 module.exports = router;
