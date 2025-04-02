@@ -3,6 +3,7 @@ const User = require('../models/user.model');
 const Admin = require('../models/admin.model');
 const { sendEmail } = require('./email.utils');
 const Notification = require('../models/notification.model');
+const { APIError } = require('../middlewares/error.middlewares');
 
 /**
  *
@@ -13,34 +14,30 @@ const Notification = require('../models/notification.model');
  * @param {string?} subject an optional email subject field used if notifyEmail is true
  */
 const sendNotification = async ({ message, role, id, notifyEmail, subject }) => {
-  try {
-    if (role === ROLES.USER) {
-      // for users
-      const user = await User.findById(id);
-      if (!user) {
-        throw new Error('User not found!');
-      }
-
-      await Notification.create({ message, role, user: id });
-
-      if (notifyEmail) {
-        await sendEmail({ subject, email: user.email, text: message });
-      }
-    } else {
-      // for admins and super-admins
-      const admin = await Admin.findById(id);
-      if (!admin) {
-        throw new Error('Admin not found!');
-      }
-
-      await Notification.create({ message, role, admin: id });
-
-      if (notifyEmail) {
-        await sendEmail({ subject, email: admin.email, text: message });
-      }
+  if (role === ROLES.USER) {
+    // for users
+    const user = await User.findById(id);
+    if (!user) {
+      throw new APIError('User not found!');
     }
-  } catch (error) {
-    throw error;
+
+    await Notification.create({ message, role, user: id });
+
+    if (notifyEmail) {
+      await sendEmail({ subject, email: user.email, text: message });
+    }
+  } else {
+    // for admins and super-admins
+    const admin = await Admin.findById(id);
+    if (!admin) {
+      throw new APIError('Admin not found!', 404);
+    }
+
+    await Notification.create({ message, role, admin: id });
+
+    if (notifyEmail) {
+      await sendEmail({ subject, email: admin.email, text: message });
+    }
   }
 };
 

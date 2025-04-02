@@ -12,7 +12,7 @@ const StatusSchema = new Schema(
       enum: Object.values(ADMIN_TOKEN_STATUS_CODES),
     },
   },
-  { minimize: false, versionKey: false, id: false }
+  { minimize: false, versionKey: false, _id: false }
 );
 
 // These tokens are for managing admin rights

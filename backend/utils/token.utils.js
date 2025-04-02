@@ -18,11 +18,7 @@ const createToken = (
   tokenKey = ACCESS_TOKEN_SECRET,
   expiresIn = ACCESS_TOKEN_EXPIRY
 ) => {
-  try {
-    return jwt.sign(tokenData, tokenKey, { expiresIn });
-  } catch (error) {
-    throw error;
-  }
+  return jwt.sign(tokenData, tokenKey, { expiresIn });
 };
 
 /**
@@ -32,23 +28,19 @@ const createToken = (
  * @returns {string} reset token string for user
  */
 const sendResetToken = async (email, duration = 10) => {
-  try {
-    // clear any old record
-    await ResetToken.deleteOne({ email });
+  // clear any old record
+  await ResetToken.deleteOne({ email });
 
-    // save reset token record
-    const generatedResetToken = uuidv4();
-    const hashedResetToken = await hashData(generatedResetToken);
-    await ResetToken.create({
-      email,
-      createdAt: Date.now(),
-      token: hashedResetToken,
-      expiresAt: Date.now() + 60_000 * +duration,
-    });
-    return generatedResetToken;
-  } catch (error) {
-    throw error;
-  }
+  // save reset token record
+  const generatedResetToken = uuidv4();
+  const hashedResetToken = await hashData(generatedResetToken);
+  await ResetToken.create({
+    email,
+    createdAt: Date.now(),
+    token: hashedResetToken,
+    expiresAt: Date.now() + 60_000 * +duration,
+  });
+  return generatedResetToken;
 };
 
 module.exports = { createToken, sendResetToken };

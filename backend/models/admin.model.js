@@ -6,6 +6,7 @@ const { ROLES } = require('../constants');
 const Token = require('../models/token.model');
 const { hashData } = require('../utils/hash.utils');
 const { createToken } = require('../utils/token.utils');
+const { APIError } = require('../middlewares/error.middlewares');
 
 const AdminSchema = new Schema(
   {
@@ -54,43 +55,39 @@ AdminSchema.plugin(mongoosePaginate);
 
 /* Before returning json response to client after a successful login, add a token field */
 AdminSchema.statics.findByCredentials = async (email, password) => {
-  try {
-    const admin = await Admin.findOne({ email });
+  const admin = await Admin.findOne({ email });
 
-    if (!admin) throw new Error('Admin not found');
+  if (!admin) throw new APIError('Admin not found', 404);
 
-    const passwordMatches = bcrypt.compareSync(password, admin.password);
-    if (passwordMatches) {
-      const tokenData = { issuedAt: Date.now(), email, _id: admin._id };
-      let tokens = {
-        accessToken: createToken(tokenData),
-        refreshToken: createToken(
-          tokenData,
-          process.env.REFRESH_TOKEN_SECRET,
-          process.env.REFRESH_TOKEN_EXPIRY
-        ),
-      };
+  const passwordMatches = bcrypt.compareSync(password, admin.password);
+  if (passwordMatches) {
+    const tokenData = { issuedAt: Date.now(), email, _id: admin._id };
+    let tokens = {
+      accessToken: createToken(tokenData),
+      refreshToken: createToken(
+        tokenData,
+        process.env.REFRESH_TOKEN_SECRET,
+        process.env.REFRESH_TOKEN_EXPIRY
+      ),
+    };
 
-      // store unhashed tokens for admin
-      const adminObject = admin.toJSON();
-      adminObject.tokens = { ...tokens };
+    // store unhashed tokens for admin
+    const adminObject = admin.toJSON();
+    adminObject.tokens = { ...tokens };
 
-      // then hash the tokens
-      tokens.accessToken = await hashData(tokens.accessToken);
-      tokens.refreshToken = await hashData(tokens.refreshToken);
+    // then hash the tokens
+    tokens.accessToken = await hashData(tokens.accessToken);
+    tokens.refreshToken = await hashData(tokens.refreshToken);
 
-      // delete any previous tokens
-      await Token.deleteOne({ email });
+    // delete any previous tokens
+    await Token.deleteOne({ email });
 
-      // upload hashed tokens to database
-      tokens.email = email;
-      await Token.create(tokens);
-      return adminObject;
-    }
-    throw new Error('Invalid credentials');
-  } catch (error) {
-    throw new Error(error.message);
+    // upload hashed tokens to database
+    tokens.email = email;
+    await Token.create(tokens);
+    return adminObject;
   }
+  throw new APIError('Invalid credentials', 401);
 };
 
 /* Before returning json response to client, remove the password field */

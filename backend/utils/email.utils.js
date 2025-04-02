@@ -1,4 +1,5 @@
 const { transporter } = require('../configs/email.config');
+const { APIError } = require('../middlewares/error.middlewares');
 
 /**
  *
@@ -9,7 +10,7 @@ const { transporter } = require('../configs/email.config');
  */
 const sendEmail = async ({ email, subject, text, html }) => {
   if (!email) {
-    throw new Error("Could not find 'email' field");
+    throw new APIError("Could not find 'email' field", 400);
   }
 
   const mailOptions = { subject, to: email, from: process.env.AUTH_TRANSPORT_USERNAME };
@@ -19,7 +20,7 @@ const sendEmail = async ({ email, subject, text, html }) => {
   } else if (html) {
     mailOptions.html = html;
   } else {
-    throw new Error("Could not find 'text' or 'html' field");
+    throw new APIError("Could not find 'text' or 'html' field", 400);
   }
 
   transporter.sendMail(mailOptions, (error, info) => {

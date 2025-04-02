@@ -1,3 +1,4 @@
+const multer = require('multer');
 const router = require('express').Router();
 
 const { verifyAdminToken, verifyToken } = require('../middlewares/admin.middlewares');
@@ -9,14 +10,16 @@ const {
   getElectionContestants,
 } = require('../controllers/contestant.controllers');
 
+const upload = multer();
+
 router.route('/').get(verifyToken, verifyAdminToken, getContestants);
 
-router.route('/').post(verifyToken, verifyAdminToken, addContestant);
-
-router.route('/:id').patch(verifyToken, verifyAdminToken, updateContestant);
+router.route('/').post(upload.any(), verifyToken, verifyAdminToken, addContestant);
 
 router.route('/:id').delete(verifyToken, verifyAdminToken, deleteContestant);
 
-router.route('/get-election-contestants').get(getElectionContestants);
+router.route('/:id').patch(upload.any(), verifyToken, verifyAdminToken, updateContestant);
+
+router.route('/:id').get(getElectionContestants);
 
 module.exports = router;

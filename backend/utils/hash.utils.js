@@ -7,12 +7,8 @@ const { compare, hash } = require('bcrypt');
  * @returns {string} encrypted data salt
  */
 const hashData = async (data, saltRounds = 10) => {
-  try {
-    const hashedData = await hash(data, saltRounds);
-    return hashedData;
-  } catch (error) {
-    throw error;
-  }
+  const hashedData = await hash(data, saltRounds);
+  return hashedData;
 };
 
 /**
@@ -22,12 +18,8 @@ const hashData = async (data, saltRounds = 10) => {
  * @returns {boolean} a value indicating the equality of the hashed and unhashed data
  */
 const verifyHashedData = async (unhashed, hashed) => {
-  try {
-    const match = await compare(unhashed, hashed);
-    return match;
-  } catch (error) {
-    throw error;
-  }
+  const match = await compare(unhashed, hashed);
+  return match;
 };
 
 module.exports = { hashData, verifyHashedData };

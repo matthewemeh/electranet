@@ -40,6 +40,7 @@ const ElectionSchema = new Schema(
       maxLength: 20,
       immutable: doc => Date.now() >= doc.startTime,
     },
+    contestants: [{ type: Schema.Types.ObjectId, ref: 'Contestant' }],
   },
   { minimize: false, timestamps: true, collection: 'elections' }
 );

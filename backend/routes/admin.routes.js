@@ -45,7 +45,7 @@ router.route('/delete-profile-image').patch(verifyToken, deleteProfileImage);
 
 router.route('/refresh-token').post(verifyRefreshToken, getRefreshToken);
 
-router.route('/update-profile-image').patch(verifyToken, upload.any(), updateProfileImage);
+router.route('/update-profile-image').patch(upload.any(), verifyToken, updateProfileImage);
 
 router.route('/get-users').get(verifyToken, verifyAdminToken, getUsers);
 
