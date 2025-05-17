@@ -1,0 +1,169 @@
+require('dotenv').config();
+const helmet = require('helmet');
+const express = require('express');
+const { Redis } = require('ioredis');
+const proxy = require('express-http-proxy');
+
+const { logger } = require('./utils/logger.utils');
+const { configureCors } = require('./config/cors.config');
+const { configureRatelimit } = require('./config/ratelimit.config');
+const { validateApiKey } = require('./middlewares/auth.middlewares');
+const { urlVersioning } = require('./middlewares/version.middlewares');
+const { globalErrorHandler } = require('./middlewares/error.middlewares');
+const { useEndpointCheck } = require('./middlewares/endpoint.middlewares');
+const { requestLogger } = require('./middlewares/request-logger.middlewares');
+
+const app = express();
+
+const {
+  PORT,
+  REDIS_URL,
+  VOTE_SERVICE_URL,
+  RESULTS_SERVICE_URL,
+  FACE_ID_SERVICE_URL,
+  ELECTION_SERVICE_URL,
+  IDENTITY_SERVICE_URL,
+} = process.env;
+
+// initialize Redis client
+const redisClient = new Redis(REDIS_URL);
+
+// apply middlewares
+app.set('trust proxy', 1); // trust first proxy: Render
+app.use(helmet());
+app.use(configureCors());
+app.use(express.json({ limit: '1mb' }));
+app.use(requestLogger);
+
+// IP-based rate limiting for sensitive endpoints
+app.use(configureRatelimit(redisClient));
+
+const proxyOptions = {
+  proxyReqPathResolver: req => {
+    return req.originalUrl.replace(/^\/v1/, '/api');
+  },
+  proxyErrorHandler: (err, res, next) => {
+    logger.error('Proxy error:', err.errors);
+    res
+      .status(500)
+      .json({ errors: null, success: false, message: `Internal server error: ${err.code}` });
+  },
+  proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+    proxyReqOpts.headers['Content-Type'] = 'application/json';
+    return proxyReqOpts;
+  },
+};
+
+app.get('/health', (req, res) => {
+  logger.info('Health check successful');
+  res.sendStatus(200);
+});
+
+// apply middleware to accept only specific version requests
+app.use(urlVersioning('v1'));
+
+app.use(
+  '/v1/face/register',
+  proxy(FACE_ID_SERVICE_URL, {
+    ...proxyOptions,
+    parseReqBody: false,
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => proxyReqOpts,
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      logger.info(`Response received from Face ID service: ${proxyRes.statusCode}`);
+      return proxyResData;
+    },
+  })
+);
+
+app.use(
+  '/v1/face/verify',
+  proxy(FACE_ID_SERVICE_URL, {
+    ...proxyOptions,
+    parseReqBody: false,
+    proxyReqOptDecorator: (proxyReqOpts, srcReq) => proxyReqOpts,
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      logger.info(`Response received from Face ID service: ${proxyRes.statusCode}`);
+      return proxyResData;
+    },
+  })
+);
+
+// setting up proxy for identity services
+const identityServiceProxy = proxy(IDENTITY_SERVICE_URL, {
+  ...proxyOptions,
+  userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+    logger.info(`Response received from Identity service: ${proxyRes.statusCode}`);
+    return proxyResData;
+  },
+});
+app.use('/v1/otp', validateApiKey, identityServiceProxy);
+app.use('/v1/auth', validateApiKey, identityServiceProxy);
+app.use('/v1/users', validateApiKey, identityServiceProxy);
+
+// setting up proxy for election services
+app.use(
+  '/v1/elections',
+  validateApiKey,
+  proxy(ELECTION_SERVICE_URL, {
+    ...proxyOptions,
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      logger.info(`Response received from Election service: ${proxyRes.statusCode}`);
+      return proxyResData;
+    },
+  })
+);
+
+// setting up proxy for vote services
+app.use(
+  '/v1/votes',
+  validateApiKey,
+  proxy(VOTE_SERVICE_URL, {
+    ...proxyOptions,
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      logger.info(`Response received from Votes service: ${proxyRes.statusCode}`);
+      return proxyResData;
+    },
+  })
+);
+
+// setting up proxy for result services
+app.use(
+  '/v1/results',
+  validateApiKey,
+  proxy(RESULTS_SERVICE_URL, {
+    ...proxyOptions,
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      logger.info(`Response received from Results service: ${proxyRes.statusCode}`);
+      return proxyResData;
+    },
+  })
+);
+
+// setting up proxy for Face ID services
+app.use(
+  '/v1/face',
+  validateApiKey,
+  proxy(FACE_ID_SERVICE_URL, {
+    ...proxyOptions,
+    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+      logger.info(`Response received from Face ID service: ${proxyRes.statusCode}`);
+      return proxyResData;
+    },
+  })
+);
+
+// check for calls on routes with wrong method
+app.use(useEndpointCheck(app));
+
+// error handler
+app.use(globalErrorHandler);
+
+app.listen(PORT, () => {
+  logger.info(`API Gateway is running on port: ${PORT}`);
+  logger.info(`Identity service is running on: ${IDENTITY_SERVICE_URL}`);
+  logger.info(`Election service is running on: ${ELECTION_SERVICE_URL}`);
+  logger.info(`Voting service is running on: ${VOTE_SERVICE_URL}`);
+  logger.info(`Results service is running on: ${RESULTS_SERVICE_URL}`);
+  logger.info(`Face ID service is running on: ${FACE_ID_SERVICE_URL}`);
+  logger.info(`Redis URL: ${REDIS_URL}`);
+});
