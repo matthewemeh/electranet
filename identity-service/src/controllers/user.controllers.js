@@ -1,50 +1,102 @@
 const moment = require('moment');
 const express = require('express');
+const { Redis } = require('ioredis');
 
-const { ROLES } = require('../constants');
 const Log = require('../models/log.model');
 const User = require('../models/user.model');
 const { logger } = require('../utils/logger.utils');
 const { sendEmail } = require('../utils/email.utils');
 const AdminToken = require('../models/admin-token.model');
-const { validateAdminInvite } = require('../utils/validation.utils');
+const { ROLES, ADMIN_TOKEN_STATUSES } = require('../constants');
 const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
-const { fetchData, getUsersKey, redisCacheExpiry, getUserKey } = require('../utils/redis.utils');
+const {
+  validateGetUsers,
+  validateAdminInvite,
+  validateGetAdminTokens,
+} = require('../utils/validation.utils');
+const {
+  fetchData,
+  getUserKey,
+  getUsersKey,
+  getAdminTokenKey,
+  redisCacheExpiry,
+  getAdminTokensKey,
+} = require('../utils/redis.utils');
 
 /**
- * @param {express.Request} req
+ * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
  */
 const getUsers = async (req, res) => {
   logger.info('Get Users endpoint called');
 
+  // validate the request query
+  const { error } = validateGetUsers(req.query);
+  if (error) {
+    logger.warn('Query Validation error', { message: error.details[0].message });
+    throw new APIError(error.details[0].message, 400);
+  }
+
+  const { role: adminRole } = req.user;
+  const { delimitationCode, email, firstName, lastName, role } = req.query;
   const page = Number(req.query.page ?? 1);
   const limit = Number(req.query.limit ?? 10);
 
   // check cache for users
-  const usersCacheKey = getUsersKey(page, limit);
-  const cachedUsers = await req.redisClient.get(usersCacheKey);
-  if (cachedUsers) {
+  const usersCacheKey = getUsersKey(
+    adminRole,
+    page,
+    limit,
+    role,
+    email,
+    lastName,
+    firstName,
+    delimitationCode
+  );
+  let paginatedUsers = await req.redisClient.get(usersCacheKey);
+  if (paginatedUsers) {
     logger.info('Users fetched successfully');
     return res.status(200).json({
       success: true,
-      data: JSON.parse(cachedUsers),
+      data: JSON.parse(paginatedUsers),
       message: 'Users fetched successfully',
     });
   }
 
+  // remove undefined fields
+  const rawFilters = { delimitationCode, email, firstName, lastName };
+  const paginationFilters = Object.fromEntries(
+    Object.entries(rawFilters).filter(([_, v]) => v !== undefined)
+  );
+  if (adminRole === ROLES.SUPER_ADMIN) {
+    /* 
+      if user is the Super Admin, then make sure his/her user data is not fetched
+      if the users are fetched by their role, then ensure those user types are fetched
+    */
+    paginationFilters.role = role && role !== ROLES.SUPER_ADMIN ? role : { $ne: ROLES.SUPER_ADMIN };
+  } else if (adminRole === ROLES.ADMIN) {
+    // if user is an Admin, then make sure only users are fetched
+    paginationFilters.role = ROLES.USER;
+  }
+
   // fallback to DB
-  const users = await User.paginate({}, { page, limit, sort: { createdAt: -1 } });
+  paginatedUsers = await User.paginate(paginationFilters, {
+    page,
+    limit,
+    sort: { createdAt: -1 },
+  });
 
   // cache fetched users
-  await req.redisClient.setex(usersCacheKey, redisCacheExpiry, JSON.stringify(users));
+  await req.redisClient.setex(usersCacheKey, redisCacheExpiry, JSON.stringify(paginatedUsers));
 
   logger.info('Users fetched successfully');
-  res.status(200).json({ success: true, message: 'Users fetched successfully', data: users });
+  res
+    .status(200)
+    .json({ success: true, message: 'Users fetched successfully', data: paginatedUsers });
 };
 
 /**
- * @param {express.Request} req
+ * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
  */
 const inviteAdmin = async (req, res) => {
@@ -84,7 +136,7 @@ const inviteAdmin = async (req, res) => {
     await AdminToken.create({ expiresAt, user: userID });
   } catch (error) {
     if (error.name === 'MongoServerError' && error.code === 11000) {
-      error.customMessage = 'Admin Token already exists for the user';
+      error.customMessage = 'User has already been invited';
       throw error;
     }
   }
@@ -111,7 +163,87 @@ const inviteAdmin = async (req, res) => {
   res.status(200).json({ success: true, message: 'Invitation sent', data: null });
 };
 
+/**
+ * @param {express.Request & {redisClient: Redis}} req
+ * @param {express.Response} res
+ */
+const revokeRights = async (req, res) => {
+  logger.info('Revoke Admin Rights endpoint called');
+
+  const { id } = req.params;
+
+  // revoke admin token status
+  const adminToken = await AdminToken.findByIdAndUpdate(
+    id,
+    { statusCode: ADMIN_TOKEN_STATUSES.REVOKED },
+    { new: true }
+  );
+  if (!adminToken) {
+    logger.error('Admin Token not found');
+    throw new APIError('Admin Token not found', 404);
+  }
+
+  // update admin token cache
+  const adminTokenCacheKey = getAdminTokenKey(adminToken.user);
+  await req.redisClient.setex(adminTokenCacheKey, redisCacheExpiry, JSON.stringify(adminToken));
+
+  logger.info('Admin rights revoked');
+  res.status(200).json({ success: true, message: 'Admin rights revoked', data: null });
+};
+
+/**
+ * @param {express.Request & {redisClient: Redis}} req
+ * @param {express.Response} res
+ */
+const getAdminTokens = async (req, res) => {
+  logger.info('Get Admin Tokens endpoint called');
+
+  // validate the request query
+  const { error } = validateGetAdminTokens(req.query);
+  if (error) {
+    logger.warn('Query Validation error', { message: error.details[0].message });
+    throw new APIError(error.details[0].message, 400);
+  }
+
+  const page = Number(req.query.page ?? 1);
+  const limit = Number(req.query.limit ?? 10);
+
+  // check cached admin tokens
+  const tokensCacheKey = getAdminTokensKey(page, limit);
+  let paginatedAdminTokens = await req.redisClient.get(tokensCacheKey);
+  if (paginatedAdminTokens) {
+    logger.info('Admin Tokens fetched successfully');
+    return res.status(200).json({
+      success: true,
+      data: JSON.parse(paginatedAdminTokens),
+      message: 'Admin Tokens fetched successfully',
+    });
+  }
+
+  // fallback to DB
+  paginatedAdminTokens = AdminToken.paginate(
+    {},
+    { page, limit, sort: { createdAt: -1 }, populate: 'user' }
+  );
+
+  // cache fetched admin tokens
+  await req.redisClient.setex(
+    tokensCacheKey,
+    redisCacheExpiry,
+    JSON.stringify(paginatedAdminTokens)
+  );
+
+  logger.info('Admin Tokens fetched successfully');
+  res.status(200).json({
+    success: true,
+    data: paginatedAdminTokens,
+    message: 'Admin Tokens fetched successfully',
+  });
+};
+
 module.exports = {
   getUsers: asyncHandler(getUsers),
   inviteAdmin: asyncHandler(inviteAdmin),
+  revokeRights: asyncHandler(revokeRights),
+  getAdminTokens: asyncHandler(getAdminTokens),
 };

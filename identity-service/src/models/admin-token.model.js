@@ -1,4 +1,5 @@
 const { Schema, model } = require('mongoose');
+const mongoosePaginate = require('mongoose-paginate-v2');
 
 const { ADMIN_TOKEN_STATUSES } = require('../constants');
 
@@ -16,6 +17,15 @@ const AdminTokenSchema = new Schema(
   },
   { minimize: false, timestamps: true, collection: 'adminTokens' }
 );
+AdminTokenSchema.plugin(mongoosePaginate);
+
+AdminTokenSchema.virtual('hasExpired').get(function () {
+  return this.expiresAt <= Date.now();
+});
+
+AdminTokenSchema.virtual('isActive').get(function () {
+  return this.statusCode === ADMIN_TOKEN_STATUSES.ACTIVE;
+});
 
 const AdminToken = model('AdminToken', AdminTokenSchema);
 module.exports = AdminToken;

@@ -1,4 +1,5 @@
 const express = require('express');
+const { Redis } = require('ioredis');
 
 const { sendOTP } = require('../utils/otp.utils');
 const { logger } = require('../utils/logger.utils');
@@ -6,7 +7,7 @@ const { validateSendOTP } = require('../utils/validation.utils');
 const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
 
 /**
- * @param {express.Request} req
+ * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
  */
 const sendOtp = async (req, res) => {

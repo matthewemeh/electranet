@@ -1,9 +1,10 @@
 const express = require('express');
+const { Redis } = require('ioredis');
 
 const User = require('../models/user.model');
 const { logger } = require('../utils/logger.utils');
+const { encrypt } = require('../utils/encrypt.utils');
 const { generateTokens } = require('../utils/token.utils');
-const { encrypt, decrypt } = require('../utils/encrypt.utils');
 const RefreshToken = require('../models/refresh-token.model');
 const { fetchData, getUserKey } = require('../utils/redis.utils');
 const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
@@ -14,7 +15,7 @@ const {
 } = require('../utils/validation.utils');
 
 /**
- * @param {express.Request} req
+ * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
  */
 const login = async (req, res) => {
@@ -48,7 +49,7 @@ const login = async (req, res) => {
 };
 
 /**
- * @param {express.Request} req
+ * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
  */
 const getRefreshToken = async (req, res) => {
@@ -85,7 +86,7 @@ const getRefreshToken = async (req, res) => {
 };
 
 /**
- * @param {express.Request} req
+ * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
  */
 const logout = async (req, res) => {

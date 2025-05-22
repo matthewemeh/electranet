@@ -1,5 +1,6 @@
 const moment = require('moment');
 const express = require('express');
+const { Redis } = require('ioredis');
 const { v4: uuidv4 } = require('uuid');
 const { hash, verify } = require('argon2');
 
@@ -23,7 +24,7 @@ const {
 } = require('../utils/redis.utils');
 
 /**
- * @param {express.Request} req
+ * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
  */
 const forgotPasswordInitiate = async (req, res) => {
@@ -58,7 +59,7 @@ const forgotPasswordInitiate = async (req, res) => {
 };
 
 /**
- * @param {express.Request} req
+ * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
  */
 const verifyOtp = async (req, res) => {
@@ -102,7 +103,7 @@ const verifyOtp = async (req, res) => {
 };
 
 /**
- * @param {express.Request} req
+ * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
  */
 const resetPassword = async (req, res) => {

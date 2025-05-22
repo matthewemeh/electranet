@@ -1,22 +1,25 @@
 const express = require('express');
+const { Redis } = require('ioredis');
 const { verify } = require('jsonwebtoken');
 
+const { ROLES } = require('../constants');
 const User = require('../models/user.model');
 const { logger } = require('../utils/logger.utils');
 const AdminToken = require('../models/admin-token.model');
-const { ROLES, ADMIN_TOKEN_STATUSES } = require('../constants');
 const { asyncHandler, APIError } = require('./error.middlewares');
 const { fetchData, getAdminTokenKey, getUserKey } = require('../utils/redis.utils');
 
 /**
- * @param {express.Request} req
+ * This middleware is used to ensure requests originate from trusted sources, applications or domains
+ * This is an alternative to using the cors package
+ * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
  * @param {express.NextFunction} next
  */
-const validateApiKey = (req, res, next) => {
-  const apiKey = req.headers['x-api-key'];
+const validateAuthKey = (req, res, next) => {
+  const authKey = req.headers['x-auth-key'];
 
-  if (!apiKey || apiKey !== process.env.API_KEY) {
+  if (!authKey || authKey !== process.env.AUTH_KEY) {
     logger.warn('Unauthorized Request!');
     throw new APIError('Unauthorized Request!', 407);
   }
@@ -25,7 +28,8 @@ const validateApiKey = (req, res, next) => {
 };
 
 /**
- * @param {express.Request} req
+ * This middleware is used to ensure that a user (of any role) has been authenticated via login credentials
+ * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
  * @param {express.NextFunction} next
  */
@@ -67,7 +71,8 @@ const verifyToken = async (req, res, next) => {
 };
 
 /**
- * @param {express.Request} req
+ * This middleware allows ONLY ADMINs (who have active admin rights) and SUPER_ADMINs to access a resource
+ * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
  * @param {express.NextFunction} next
  */
@@ -93,10 +98,10 @@ const verifyAdminToken = async (req, res, next) => {
   if (!adminToken) {
     logger.error('No admin rights available. Request rights from Super-Admin');
     throw new APIError('No admin rights available. Request rights from Super-Admin', 403);
-  } else if (adminToken.statusCode !== ADMIN_TOKEN_STATUSES.ACTIVE) {
+  } else if (!adminToken.isActive) {
     logger.error('Admin rights are not active');
     throw new APIError('Admin rights are not active', 403);
-  } else if (adminToken.expiresAt < Date.now()) {
+  } else if (adminToken.hasExpired) {
     logger.error('Admin rights have expired. Contact Super-Admin for access renewal');
     throw new APIError('Admin rights have expired. Contact Super-Admin for access renewal', 403);
   }
@@ -105,7 +110,22 @@ const verifyAdminToken = async (req, res, next) => {
 };
 
 /**
- * @param {express.Request} req
+ * This middleware restricts a resource to USERs only
+ * @param {express.Request & {redisClient: Redis}} req
+ * @param {express.Response} res
+ * @param {express.NextFunction} next
+ */
+const verifyUser = async (req, res, next) => {
+  if (req.user.role !== ROLES.USER) {
+    throw new APIError('Only users can access this resource!', 403);
+  }
+
+  next();
+};
+
+/**
+ * This middleware allows ONLY SUPER_ADMINs to access a resource
+ * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
  * @param {express.NextFunction} next
  */
@@ -119,8 +139,9 @@ const verifySuperAdmin = async (req, res, next) => {
 };
 
 module.exports = {
+  verifyUser: asyncHandler(verifyUser),
   verifyToken: asyncHandler(verifyToken),
-  validateApiKey: asyncHandler(validateApiKey),
+  validateAuthKey: asyncHandler(validateAuthKey),
   verifyAdminToken: asyncHandler(verifyAdminToken),
   verifySuperAdmin: asyncHandler(verifySuperAdmin),
 };

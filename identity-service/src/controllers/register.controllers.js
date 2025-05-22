@@ -1,4 +1,5 @@
 const express = require('express');
+const { Redis } = require('ioredis');
 
 const { ROLES } = require('../constants');
 const User = require('../models/user.model');
@@ -14,7 +15,7 @@ const {
 } = require('../utils/validation.utils');
 
 /**
- * @param {express.Request} req
+ * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
  */
 const registerUser = async (req, res) => {
@@ -62,7 +63,7 @@ const registerUser = async (req, res) => {
 };
 
 /**
- * @param {express.Request} req
+ * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
  */
 const registerAdmin = async (req, res) => {
@@ -114,7 +115,7 @@ const registerAdmin = async (req, res) => {
 };
 
 /**
- * @param {express.Request} req
+ * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
  */
 const verifyOtp = async (req, res) => {

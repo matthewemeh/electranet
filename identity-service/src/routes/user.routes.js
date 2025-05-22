@@ -2,18 +2,31 @@ const router = require('express').Router();
 
 const {
   verifyToken,
-  validateApiKey,
+  validateAuthKey,
   verifyAdminToken,
   verifySuperAdmin,
 } = require('../middlewares/auth.middlewares');
-const { getUsers, inviteAdmin } = require('../controllers/user.controllers');
+const {
+  getUsers,
+  inviteAdmin,
+  revokeRights,
+  getAdminTokens,
+} = require('../controllers/user.controllers');
 
-router.use(validateApiKey);
+router.use(validateAuthKey);
 
 router.use(verifyToken);
 
-router.get('/', verifyAdminToken, getUsers);
+router.use(verifyAdminToken);
 
-router.post('/invite', verifySuperAdmin, inviteAdmin);
+router.get('/', getUsers);
+
+router.use(verifySuperAdmin);
+
+router.post('/invite', inviteAdmin);
+
+router.get('/tokens', getAdminTokens);
+
+router.patch('/revoke/:id', revokeRights);
 
 module.exports = router;

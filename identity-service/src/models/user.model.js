@@ -25,11 +25,11 @@ const UserSchema = new Schema(
     delimitationCode: { type: String, immutable: true },
     password: { type: String, trim: true, required: true },
     address: { type: String, trim: true, immutable: true },
+    occupation: { type: String, trim: true, immutable: true },
     lastName: { type: String, immutable: true, required: true },
     firstName: { type: String, immutable: true, required: true },
     electionsVoted: [{ type: Schema.Types.ObjectId, ref: 'Election' }],
     gender: { type: String, immutable: true, enum: ['MALE', 'FEMALE'] },
-    occupation: { type: String, trim: true, maxLength: 64, immutable: true },
     role: { type: String, immutable: true, enum: Object.values(ROLES), required: true },
   },
   { minimize: false, timestamps: true, collection: 'users' }
@@ -37,6 +37,7 @@ const UserSchema = new Schema(
 UserSchema.plugin(mongoosePaginate);
 
 UserSchema.index({ 'email.value': 1 }, { unique: true });
+UserSchema.index({ firstName: 'text', lastName: 'text' });
 UserSchema.index(
   { vin: 1 },
   { unique: true, partialFilterExpression: { vin: { $exists: true, $gt: '' } } }
@@ -52,6 +53,7 @@ UserSchema.pre('save', async function (next) {
     }
   }
 
+  // encrypt the vin before saving to DB
   if (this.isModified('vin')) {
     try {
       this.vin = encrypt(this.vin);
@@ -61,15 +63,11 @@ UserSchema.pre('save', async function (next) {
   }
 });
 
-UserSchema.virtual('fullName').get(function () {
-  return `${this.firstName} ${this.lastName}`;
-});
-
-UserSchema.methods.hasVoted = async function (electionID) {
-  const electionsVoted = new Set(this.electionsVoted);
-  return electionsVoted.has(electionID);
-};
-
+/**
+ * Validates a user's login credentials
+ * @param {string} candidatePassword
+ * @returns {boolean}
+ */
 UserSchema.methods.comparePassword = async function (candidatePassword) {
   try {
     return await verify(this.password, candidatePassword);
@@ -87,6 +85,7 @@ UserSchema.methods.toJSON = function () {
   return user;
 };
 
+// prevents fields from being stripped
 UserSchema.methods.toRaw = function () {
   return this.toObject({ transform: false });
 };
