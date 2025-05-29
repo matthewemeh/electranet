@@ -1,5 +1,6 @@
 const express = require('express');
 const { Redis } = require('ioredis');
+const { StatusCodes } = require('http-status-codes');
 
 const Log = require('../models/log.model');
 const { logger } = require('../utils/logger.utils');
@@ -26,7 +27,7 @@ const addElection = async (req, res) => {
   const { error } = validateElection(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   // proceed to create election
@@ -40,7 +41,9 @@ const addElection = async (req, res) => {
   });
 
   logger.info('Election created');
-  res.status(201).json({ success: true, message: 'Election created', data: election });
+  res
+    .status(StatusCodes.CREATED)
+    .json({ success: true, message: 'Election created', data: election });
 };
 
 /**
@@ -54,7 +57,7 @@ const getElections = async (req, res) => {
   const { error } = validateGetElections(req.body);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { delimitationCode, startTime, endTime } = req.query;
@@ -66,7 +69,7 @@ const getElections = async (req, res) => {
   let paginatedElections = await req.redisClient.get(electionsCacheKey);
   if (paginatedElections) {
     logger.info('Elections fetched successfully');
-    return res.status(200).json({
+    return res.status(StatusCodes.OK).json({
       success: true,
       data: JSON.parse(paginatedElections),
       message: 'Elections fetched successfully',
@@ -100,7 +103,7 @@ const getElections = async (req, res) => {
 
   logger.info('Elections fetched successfully');
   res
-    .status(200)
+    .status(StatusCodes.OK)
     .json({ success: true, data: paginatedElections, message: 'Elections fetched successfully' });
 };
 
@@ -115,7 +118,7 @@ const getUserElections = async (req, res) => {
   const { error } = validateGetUserElections(req.body);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { user } = req;
@@ -128,7 +131,7 @@ const getUserElections = async (req, res) => {
   let paginatedElections = await req.redisClient.get(userElectionsKey);
   if (paginatedElections) {
     logger.info('Elections fetched successfully');
-    return res.status(200).json({
+    return res.status(StatusCodes.OK).json({
       success: true,
       data: JSON.parse(paginatedElections),
       message: 'Elections fetched successfully',
@@ -159,7 +162,7 @@ const getUserElections = async (req, res) => {
 
   logger.info('Elections fetched successfully');
   res
-    .status(200)
+    .status(StatusCodes.OK)
     .json({ success: true, data: paginatedElections, message: 'Elections fetched successfully' });
 };
 
@@ -174,7 +177,7 @@ const updateElection = async (req, res) => {
   const { error } = validateElectionUpdate(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   // update the election
@@ -185,19 +188,19 @@ const updateElection = async (req, res) => {
   const election = await Election.findById(id);
   if (!election) {
     logger.error('Election not found');
-    throw new APIError('Election not found', 404);
+    throw new APIError('Election not found', StatusCodes.NOT_FOUND);
   }
 
   // check if fields are editable
   if ('endTime' in payload && election.hasEnded) {
     logger.info('Completed election cannot be edited');
-    throw new APIError('Completed election cannot be edited', 400);
+    throw new APIError('Completed election cannot be edited', StatusCodes.BAD_REQUEST);
   } else if (
     ('startTime' in payload || 'name' in payload || 'delimitationCode' in payload) &&
     election.hasStarted
   ) {
     logger.info('Commenced election cannot be edited');
-    throw new APIError('Commenced election cannot be edited', 400);
+    throw new APIError('Commenced election cannot be edited', StatusCodes.BAD_REQUEST);
   }
 
   // proceed to update election
@@ -214,7 +217,9 @@ const updateElection = async (req, res) => {
   });
 
   logger.info('Election updated successfully');
-  res.status(200).json({ success: true, message: 'Election updated successfully', data: null });
+  res
+    .status(StatusCodes.OK)
+    .json({ success: true, message: 'Election updated successfully', data: null });
 };
 
 /**
@@ -231,7 +236,7 @@ const deleteElection = async (req, res) => {
   const election = await Election.findOneAndDelete({ _id: id, startTime: { $gt: now } });
   if (!election) {
     logger.error('Election has already commenced or does not exist');
-    throw new APIError('Election has already commenced or does not exist', 404);
+    throw new APIError('Election has already commenced or does not exist', StatusCodes.NOT_FOUND);
   }
 
   // remove the contestants' election field
@@ -245,7 +250,9 @@ const deleteElection = async (req, res) => {
   });
 
   logger.info('Election deleted successfully');
-  res.status(200).json({ success: true, message: 'Election deleted successfully', data: null });
+  res
+    .status(StatusCodes.OK)
+    .json({ success: true, message: 'Election deleted successfully', data: null });
 };
 
 /**
@@ -259,7 +266,7 @@ const addContestant = async (req, res) => {
   const { error } = validateElectionContestant(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { id } = req.params;
@@ -269,10 +276,10 @@ const addContestant = async (req, res) => {
   const contestant = await Contestant.findById(contestantID);
   if (!contestant) {
     logger.error('Contestant not found');
-    throw new APIError('Contestant not found', 404);
+    throw new APIError('Contestant not found', StatusCodes.NOT_FOUND);
   } else if (!contestant.party) {
     logger.error('Contestant not registered under a party');
-    throw new APIError('Contestant not registered under a party', 400);
+    throw new APIError('Contestant not registered under a party', StatusCodes.BAD_REQUEST);
   }
 
   // add contestant to election if it hasn't started and contestant hasn't been added already
@@ -287,7 +294,7 @@ const addContestant = async (req, res) => {
     );
     throw new APIError(
       "Election has already commenced, doesn't exist or already has contestant registered",
-      404
+      StatusCodes.NOT_FOUND
     );
   }
 
@@ -303,7 +310,9 @@ const addContestant = async (req, res) => {
   });
 
   logger.info('Contestant added successfully');
-  res.status(200).json({ success: true, message: 'Contestant added successfully', data: null });
+  res
+    .status(StatusCodes.OK)
+    .json({ success: true, message: 'Contestant added successfully', data: null });
 };
 
 /**
@@ -317,7 +326,7 @@ const removeContestant = async (req, res) => {
   const { error } = validateElectionContestant(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { id } = req.params;
@@ -327,7 +336,7 @@ const removeContestant = async (req, res) => {
   const contestant = await Contestant.findById(contestantID);
   if (!contestant) {
     logger.error('Contestant not found');
-    throw new APIError('Contestant not found', 404);
+    throw new APIError('Contestant not found', StatusCodes.NOT_FOUND);
   }
 
   // remove contestant from election if it hasn't started yet
@@ -338,7 +347,7 @@ const removeContestant = async (req, res) => {
   );
   if (!election) {
     logger.error("Election has already commenced or doesn't exist");
-    throw new APIError("Election has already commenced or doesn't exist", 404);
+    throw new APIError("Election has already commenced or doesn't exist", StatusCodes.NOT_FOUND);
   }
 
   // remove contestant's election if still a participant
@@ -355,7 +364,9 @@ const removeContestant = async (req, res) => {
   });
 
   logger.info('Contestant removed successfully');
-  res.status(200).json({ success: true, message: 'Contestant removed successfully', data: null });
+  res
+    .status(StatusCodes.OK)
+    .json({ success: true, message: 'Contestant removed successfully', data: null });
 };
 
 module.exports = {

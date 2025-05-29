@@ -1,6 +1,7 @@
 const express = require('express');
 const { Redis } = require('ioredis');
 const { verify } = require('jsonwebtoken');
+const { StatusCodes } = require('http-status-codes');
 
 const User = require('../models/user.model');
 const { logger } = require('../utils/logger.utils');
@@ -19,7 +20,7 @@ const validateAuthKey = (req, res, next) => {
 
   if (!authKey || authKey !== process.env.AUTH_KEY) {
     logger.warn('Unauthorized Request!');
-    throw new APIError('Unauthorized Request!', 407);
+    throw new APIError('Unauthorized Request!', StatusCodes.PROXY_AUTHENTICATION_REQUIRED);
   }
 
   next();
@@ -37,7 +38,7 @@ const verifyToken = async (req, res, next) => {
 
   if (!token) {
     logger.error('An authorization token is required');
-    throw new APIError('An authorization token is required', 401);
+    throw new APIError('An authorization token is required', StatusCodes.UNAUTHORIZED);
   }
 
   let decodedUser;
@@ -45,7 +46,7 @@ const verifyToken = async (req, res, next) => {
     decodedUser = verify(token, process.env.JWT_SECRET);
   } catch (error) {
     logger.error('Session expired', error);
-    throw new APIError('Session expired', 403);
+    throw new APIError('Session expired', StatusCodes.FORBIDDEN);
   }
 
   const userCacheKey = getUserKey(decodedUser.email);
@@ -57,10 +58,10 @@ const verifyToken = async (req, res, next) => {
   );
   if (!user) {
     logger.error('User not found');
-    throw new APIError('User not found', 404);
+    throw new APIError('User not found', StatusCodes.NOT_FOUND);
   } else if (!user.email.verified) {
     logger.error('User has not verified email address');
-    throw new APIError('User has not verified email address', 400);
+    throw new APIError('User has not verified email address', StatusCodes.BAD_REQUEST);
   }
 
   req.user = user;

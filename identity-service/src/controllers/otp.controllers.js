@@ -1,5 +1,6 @@
 const express = require('express');
 const { Redis } = require('ioredis');
+const { StatusCodes } = require('http-status-codes');
 
 const { sendOTP } = require('../utils/otp.utils');
 const { logger } = require('../utils/logger.utils');
@@ -17,14 +18,14 @@ const sendOtp = async (req, res) => {
   const { error } = validateSendOTP(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { email, subject, duration } = req.body;
   await sendOTP(email, subject, req.redisClient, duration);
 
   logger.info('OTP sent successfully');
-  res.status(200).json({ success: true, message: 'OTP sent successfully', data: null });
+  res.status(StatusCodes.OK).json({ success: true, message: 'OTP sent successfully', data: null });
 };
 
 module.exports = {

@@ -1,6 +1,7 @@
 const express = require('express');
 const { Redis } = require('ioredis');
 const { verify } = require('jsonwebtoken');
+const { StatusCodes } = require('http-status-codes');
 
 const { ROLES } = require('../constants');
 const User = require('../models/user.model');
@@ -21,7 +22,7 @@ const validateAuthKey = (req, res, next) => {
 
   if (!authKey || authKey !== process.env.AUTH_KEY) {
     logger.warn('Unauthorized Request!');
-    throw new APIError('Unauthorized Request!', 407);
+    throw new APIError('Unauthorized Request!', StatusCodes.PROXY_AUTHENTICATION_REQUIRED);
   }
 
   next();
@@ -39,7 +40,7 @@ const verifyToken = async (req, res, next) => {
 
   if (!token) {
     logger.error('An authorization token is required');
-    throw new APIError('An authorization token is required', 401);
+    throw new APIError('An authorization token is required', StatusCodes.UNAUTHORIZED);
   }
 
   let decodedUser;
@@ -47,7 +48,7 @@ const verifyToken = async (req, res, next) => {
     decodedUser = verify(token, process.env.JWT_SECRET);
   } catch (error) {
     logger.error('Session expired', error);
-    throw new APIError('Session expired', 403);
+    throw new APIError('Session expired', StatusCodes.FORBIDDEN);
   }
 
   const userCacheKey = getUserKey(decodedUser.email);
@@ -59,10 +60,10 @@ const verifyToken = async (req, res, next) => {
   );
   if (!user) {
     logger.error('User not found');
-    throw new APIError('User not found', 404);
+    throw new APIError('User not found', StatusCodes.NOT_FOUND);
   } else if (!user.email.verified) {
     logger.error('User has not verified email address');
-    throw new APIError('User has not verified email address', 400);
+    throw new APIError('User has not verified email address', StatusCodes.BAD_REQUEST);
   }
 
   req.user = user;
@@ -84,7 +85,7 @@ const verifyAdminToken = async (req, res, next) => {
     return next();
   } else if (role === ROLES.USER) {
     logger.error('Unauthorized access!');
-    throw new APIError('Unauthorized access!', 403);
+    throw new APIError('Unauthorized access!', StatusCodes.FORBIDDEN);
   }
 
   // check if admin token record exists, is active and hasn't expired
@@ -97,13 +98,19 @@ const verifyAdminToken = async (req, res, next) => {
   );
   if (!adminToken) {
     logger.error('No admin rights available. Request rights from Super-Admin');
-    throw new APIError('No admin rights available. Request rights from Super-Admin', 403);
+    throw new APIError(
+      'No admin rights available. Request rights from Super-Admin',
+      StatusCodes.FORBIDDEN
+    );
   } else if (!adminToken.isActive) {
     logger.error('Admin rights are not active');
-    throw new APIError('Admin rights are not active', 403);
+    throw new APIError('Admin rights are not active', StatusCodes.FORBIDDEN);
   } else if (adminToken.hasExpired) {
     logger.error('Admin rights have expired. Contact Super-Admin for access renewal');
-    throw new APIError('Admin rights have expired. Contact Super-Admin for access renewal', 403);
+    throw new APIError(
+      'Admin rights have expired. Contact Super-Admin for access renewal',
+      StatusCodes.FORBIDDEN
+    );
   }
 
   next();
@@ -117,7 +124,7 @@ const verifyAdminToken = async (req, res, next) => {
  */
 const verifyUser = async (req, res, next) => {
   if (req.user.role !== ROLES.USER) {
-    throw new APIError('Only users can access this resource!', 403);
+    throw new APIError('Only users can access this resource!', StatusCodes.FORBIDDEN);
   }
 
   next();
@@ -132,7 +139,7 @@ const verifyUser = async (req, res, next) => {
 const verifySuperAdmin = async (req, res, next) => {
   if (req.user.role !== ROLES.SUPER_ADMIN) {
     logger.error('Unauthorized access!');
-    throw new APIError('Unauthorized access!', 403);
+    throw new APIError('Unauthorized access!', StatusCodes.FORBIDDEN);
   }
 
   next();

@@ -1,4 +1,5 @@
 const express = require('express');
+const { StatusCodes } = require('http-status-codes');
 
 const { logger } = require('../utils/logger.utils');
 
@@ -46,7 +47,7 @@ const globalErrorHandler = (error, req, res, next) => {
     });
 
     logger.error('ValidationError', errorResponse.message);
-    return res.status(400).json(errorResponse);
+    return res.status(StatusCodes.BAD_REQUEST).json(errorResponse);
   } else if (error.name === 'MongoServerError') {
     const errorResponse = { errors: null, success: false, message: error.message };
     if (error.code === 11000) {
@@ -54,14 +55,16 @@ const globalErrorHandler = (error, req, res, next) => {
       errorResponse.message =
         error.customMessage ||
         `The ${field.split('.')[0]}: ${value} is already registered on the platform`;
-      return res.status(409).json(errorResponse);
+      return res.status(StatusCodes.CONFLICT).json(errorResponse);
     }
 
     logger.error('MongoServerError', errorResponse.message);
-    return res.status(400).json(errorResponse);
+    return res.status(StatusCodes.BAD_REQUEST).json(errorResponse);
   } else {
     logger.error(error.stack);
-    return res.status(500).json({ errors: null, success: false, message: error.message });
+    return res
+      .status(StatusCodes.INTERNAL_SERVER_ERROR)
+      .json({ errors: null, success: false, message: error.message });
   }
 };
 

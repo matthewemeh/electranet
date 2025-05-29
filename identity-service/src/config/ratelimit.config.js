@@ -1,6 +1,7 @@
 const { Redis } = require('ioredis');
 const { RedisStore } = require('rate-limit-redis');
 const { rateLimit } = require('express-rate-limit');
+const { StatusCodes, ReasonPhrases } = require('http-status-codes');
 
 const { logger } = require('../utils/logger.utils');
 
@@ -17,7 +18,9 @@ const configureRatelimit = (redisClient, maxRequests = 50, duration = 900_000) =
     standardHeaders: true,
     handler: (req, res) => {
       logger.warn(`Sensitive endpoint rate limit exceeded for IP: ${req.ip}`);
-      res.status(429).json({ success: false, message: 'Too many requests', data: null });
+      res
+        .status(StatusCodes.TOO_MANY_REQUESTS)
+        .json({ success: false, message: ReasonPhrases.TOO_MANY_REQUESTS, data: null });
     },
     store: new RedisStore({
       sendCommand: (...args) => redisClient.call(...args),

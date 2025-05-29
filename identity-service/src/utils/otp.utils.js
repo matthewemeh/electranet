@@ -1,5 +1,6 @@
 const { Redis } = require('ioredis');
 const { hash, verify } = require('argon2');
+const { StatusCodes } = require('http-status-codes');
 
 const { logger } = require('./logger.utils');
 const { sendEmail } = require('./email.utils');
@@ -46,7 +47,7 @@ const verifyOTP = async (email, otp, redisClient) => {
   const hashedOTP = await redisClient.get(otpCacheKey);
   if (!hashedOTP) {
     logger.error('OTP has expired');
-    throw new APIError('OTP has expired', 404);
+    throw new APIError('OTP has expired', StatusCodes.GONE);
   }
 
   const isOtpValid = await verify(hashedOTP, otp);

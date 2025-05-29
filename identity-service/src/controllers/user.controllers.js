@@ -1,6 +1,7 @@
 const moment = require('moment');
 const express = require('express');
 const { Redis } = require('ioredis');
+const { StatusCodes } = require('http-status-codes');
 
 const Log = require('../models/log.model');
 const User = require('../models/user.model');
@@ -34,7 +35,7 @@ const getUsers = async (req, res) => {
   const { error } = validateGetUsers(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { role: adminRole } = req.user;
@@ -56,7 +57,7 @@ const getUsers = async (req, res) => {
   let paginatedUsers = await req.redisClient.get(usersCacheKey);
   if (paginatedUsers) {
     logger.info('Users fetched successfully');
-    return res.status(200).json({
+    return res.status(StatusCodes.OK).json({
       success: true,
       data: JSON.parse(paginatedUsers),
       message: 'Users fetched successfully',
@@ -91,7 +92,7 @@ const getUsers = async (req, res) => {
 
   logger.info('Users fetched successfully');
   res
-    .status(200)
+    .status(StatusCodes.OK)
     .json({ success: true, message: 'Users fetched successfully', data: paginatedUsers });
 };
 
@@ -106,7 +107,7 @@ const inviteAdmin = async (req, res) => {
   const { error } = validateAdminInvite(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { _id } = req.user;
@@ -115,7 +116,7 @@ const inviteAdmin = async (req, res) => {
   // check that super admin is not inviting himself/herself
   if (_id == userID) {
     logger.warn('Redundant invite: User is the Super Admin');
-    throw new APIError('Redundant invite: User is the Super Admin', 400);
+    throw new APIError('Redundant invite: User is the Super Admin', StatusCodes.BAD_REQUEST);
   }
 
   // check that new invitee is registered as an admin
@@ -128,7 +129,7 @@ const inviteAdmin = async (req, res) => {
   );
   if (!user) {
     logger.error('User has not registered as an admin on the plaform');
-    throw new APIError('User has not registered as an admin on the plaform', 404);
+    throw new APIError('User has not registered as an admin on the plaform', StatusCodes.NOT_FOUND);
   }
 
   try {
@@ -160,7 +161,7 @@ const inviteAdmin = async (req, res) => {
   });
 
   logger.info('Invitation sent');
-  res.status(200).json({ success: true, message: 'Invitation sent', data: null });
+  res.status(StatusCodes.OK).json({ success: true, message: 'Invitation sent', data: null });
 };
 
 /**
@@ -180,7 +181,7 @@ const revokeRights = async (req, res) => {
   );
   if (!adminToken) {
     logger.error('Admin Token not found');
-    throw new APIError('Admin Token not found', 404);
+    throw new APIError('Admin Token not found', StatusCodes.NOT_FOUND);
   }
 
   // update admin token cache
@@ -188,7 +189,7 @@ const revokeRights = async (req, res) => {
   await req.redisClient.setex(adminTokenCacheKey, redisCacheExpiry, JSON.stringify(adminToken));
 
   logger.info('Admin rights revoked');
-  res.status(200).json({ success: true, message: 'Admin rights revoked', data: null });
+  res.status(StatusCodes.OK).json({ success: true, message: 'Admin rights revoked', data: null });
 };
 
 /**
@@ -202,7 +203,7 @@ const getAdminTokens = async (req, res) => {
   const { error } = validateGetAdminTokens(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const page = Number(req.query.page ?? 1);
@@ -213,7 +214,7 @@ const getAdminTokens = async (req, res) => {
   let paginatedAdminTokens = await req.redisClient.get(tokensCacheKey);
   if (paginatedAdminTokens) {
     logger.info('Admin Tokens fetched successfully');
-    return res.status(200).json({
+    return res.status(StatusCodes.OK).json({
       success: true,
       data: JSON.parse(paginatedAdminTokens),
       message: 'Admin Tokens fetched successfully',
@@ -234,7 +235,7 @@ const getAdminTokens = async (req, res) => {
   );
 
   logger.info('Admin Tokens fetched successfully');
-  res.status(200).json({
+  res.status(StatusCodes.OK).json({
     success: true,
     data: paginatedAdminTokens,
     message: 'Admin Tokens fetched successfully',

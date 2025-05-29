@@ -1,3 +1,5 @@
+const { StatusCodes } = require('http-status-codes');
+
 const { logger } = require('../utils/logger.utils');
 
 const urlVersioning = version => (req, res, next) => {
@@ -5,7 +7,9 @@ const urlVersioning = version => (req, res, next) => {
     next();
   } else {
     logger.error('API version is not supported');
-    res.status(404).json({ errors: null, success: false, message: 'API version is not supported' });
+    res
+      .status(StatusCodes.NOT_FOUND)
+      .json({ errors: null, success: false, message: 'API version is not supported' });
   }
 };
 

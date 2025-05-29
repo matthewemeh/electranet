@@ -3,6 +3,7 @@ const express = require('express');
 const { Redis } = require('ioredis');
 const { v4: uuidv4 } = require('uuid');
 const { hash, verify } = require('argon2');
+const { StatusCodes } = require('http-status-codes');
 
 const User = require('../models/user.model');
 const { logger } = require('../utils/logger.utils');
@@ -34,7 +35,7 @@ const forgotPasswordInitiate = async (req, res) => {
   const { error } = validateForgotPasswordInitiate(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { email } = req.body;
@@ -44,14 +45,14 @@ const forgotPasswordInitiate = async (req, res) => {
   const user = await fetchData(userCacheKey, { 'email.value': email }, User, req.redisClient);
   if (!user) {
     logger.error('User not found');
-    throw new APIError('User not found', 404);
+    throw new APIError('User not found', StatusCodes.NOT_FOUND);
   }
 
   // send OTP to user
   await sendOTP(email, 'ELECTRANET: Forgot Password', req.redisClient);
 
   logger.info('Password reset initiated successfully');
-  res.status(200).json({
+  res.status(StatusCodes.OK).json({
     data: null,
     success: true,
     message: 'Password reset initiated successfully; proceed to validate OTP',
@@ -69,7 +70,7 @@ const verifyOtp = async (req, res) => {
   const { error } = validateVerifyOTP(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { email, otp } = req.body;
@@ -79,13 +80,13 @@ const verifyOtp = async (req, res) => {
   const user = await fetchData(userCacheKey, { 'email.value': email }, User, req.redisClient);
   if (!user) {
     logger.error('User not found');
-    throw new APIError('User not found', 404);
+    throw new APIError('User not found', StatusCodes.NOT_FOUND);
   }
 
   const isOtpValid = await verifyOTP(email, otp, req.redisClient);
   if (!isOtpValid) {
     logger.error('Invalid OTP!');
-    throw new APIError('Invalid OTP!', 403);
+    throw new APIError('Invalid OTP!', StatusCodes.FORBIDDEN);
   }
 
   // generate reset token for user and store in cache
@@ -95,7 +96,7 @@ const verifyOtp = async (req, res) => {
   await req.redisClient.setex(tokenCacheKey, redisCacheExpiry, token);
 
   logger.info('OTP verification successful');
-  res.status(200).json({
+  res.status(StatusCodes.OK).json({
     success: true,
     data: { email, resetToken },
     message: 'OTP verification successful',
@@ -113,7 +114,7 @@ const resetPassword = async (req, res) => {
   const { error } = validateResetPassword(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { email, password, resetToken } = req.body;
@@ -123,13 +124,13 @@ const resetPassword = async (req, res) => {
   let token = await req.redisClient.get(tokenCacheKey);
   if (!token) {
     logger.error('Reset token expired');
-    throw new APIError('Reset token expired', 404);
+    throw new APIError('Reset token expired', StatusCodes.NOT_FOUND);
   }
 
-  const resetTokenMatches = verify(token, resetToken);
+  const resetTokenMatches = await verify(token, resetToken);
   if (!resetTokenMatches) {
     logger.error('Invalid reset token!');
-    throw new APIError('Invalid reset token!', 403);
+    throw new APIError('Invalid reset token!', StatusCodes.FORBIDDEN);
   }
 
   // check if user exists
@@ -137,7 +138,7 @@ const resetPassword = async (req, res) => {
   const user = await fetchData(userCacheKey, { 'email.value': email }, User, req.redisClient);
   if (!user) {
     logger.error('User not found');
-    throw new APIError('User not found', 404);
+    throw new APIError('User not found', StatusCodes.NOT_FOUND);
   }
 
   // reset (update) user's password
@@ -161,7 +162,9 @@ const resetPassword = async (req, res) => {
   });
 
   logger.info('Password reset successfully');
-  res.status(200).json({ success: true, message: 'Password reset successfully', data: null });
+  res
+    .status(StatusCodes.OK)
+    .json({ success: true, message: 'Password reset successfully', data: null });
 };
 
 module.exports = {

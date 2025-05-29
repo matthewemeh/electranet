@@ -1,0 +1,9 @@
+openapi: 3.0.0
+info:
+  title: Electranet API
+  version: 1.0.0
+  description: Electranet API (gateway) for managing requests to various services
+servers:
+  - url: https://electranet.onrender.com/v1
+    description: Production server
+paths:

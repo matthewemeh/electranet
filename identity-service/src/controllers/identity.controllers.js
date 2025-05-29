@@ -1,5 +1,6 @@
 const express = require('express');
 const { Redis } = require('ioredis');
+const { StatusCodes } = require('http-status-codes');
 
 const User = require('../models/user.model');
 const { logger } = require('../utils/logger.utils');
@@ -24,7 +25,7 @@ const login = async (req, res) => {
   const { error } = validateLogin(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { email, password } = req.body;
@@ -33,19 +34,21 @@ const login = async (req, res) => {
   const user = await fetchData(userCacheKey, { 'email.value': email }, User, req.redisClient);
   if (!user) {
     logger.error('User not found');
-    throw new APIError('User not found', 404);
+    throw new APIError('User not found', StatusCodes.NOT_FOUND);
   }
 
   const isValidPassword = await user.comparePassword(password);
   if (!isValidPassword) {
     logger.error('Invalid password');
-    throw new APIError('Invalid password', 400);
+    throw new APIError('Invalid password', StatusCodes.BAD_REQUEST);
   }
 
   const tokens = await generateTokens(user);
 
   logger.info('Login successful');
-  res.status(200).json({ success: true, message: 'Login successful', data: { user, tokens } });
+  res
+    .status(StatusCodes.OK)
+    .json({ success: true, message: 'Login successful', data: { user, tokens } });
 };
 
 /**
@@ -58,7 +61,7 @@ const getRefreshToken = async (req, res) => {
   const { error } = validateRefreshToken(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const refreshToken = encrypt(req.body.refreshToken);
@@ -67,13 +70,13 @@ const getRefreshToken = async (req, res) => {
   const token = await RefreshToken.findOne({ token: refreshToken }).populate('user');
   if (!token || token.expiresAt < Date.now()) {
     logger.error('Inavlid or expired refresh token');
-    throw new APIError('Inavlid or expired refresh token', 401);
+    throw new APIError('Inavlid or expired refresh token', StatusCodes.UNAUTHORIZED);
   }
 
   // check if user exists
   if (!token.user) {
     logger.error('User not found');
-    throw new APIError('User not found', 404);
+    throw new APIError('User not found', StatusCodes.NOT_FOUND);
   }
 
   const tokens = await generateTokens(token.user);
@@ -82,7 +85,9 @@ const getRefreshToken = async (req, res) => {
   await RefreshToken.deleteOne({ _id: token._id });
 
   logger.info('Token refresh successful');
-  res.status(200).json({ success: true, message: 'Token refresh successful', data: tokens });
+  res
+    .status(StatusCodes.OK)
+    .json({ success: true, message: 'Token refresh successful', data: tokens });
 };
 
 /**
@@ -95,7 +100,7 @@ const logout = async (req, res) => {
   const { error } = validateLogout(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const refreshToken = encrypt(req.body.refreshToken);
@@ -103,11 +108,11 @@ const logout = async (req, res) => {
   const result = await RefreshToken.deleteOne({ token: refreshToken });
   if (!result.deletedCount) {
     logger.error('Invalid refresh token');
-    throw new APIError('Invalid refresh token', 403);
+    throw new APIError('Invalid refresh token', StatusCodes.FORBIDDEN);
   }
 
   logger.info('Logout successful');
-  res.status(200).json({ success: true, message: 'Logout successful', data: null });
+  res.status(StatusCodes.OK).json({ success: true, message: 'Logout successful', data: null });
 };
 
 module.exports = {

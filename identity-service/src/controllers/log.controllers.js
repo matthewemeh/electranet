@@ -1,5 +1,6 @@
 const express = require('express');
 const { Redis } = require('ioredis');
+const { StatusCodes } = require('http-status-codes');
 
 const Log = require('../models/log.model');
 const { logger } = require('../utils/logger.utils');
@@ -15,10 +16,10 @@ const getLogs = async (req, res) => {
   logger.info('Get logs endpoint called');
 
   // validate request query
-  const { error } = validateGetLogs(req.body);
+  const { error } = validateGetLogs(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { startTime, endTime } = req.query;
@@ -30,7 +31,7 @@ const getLogs = async (req, res) => {
   let paginatedLogs = await req.redisClient.get(logsCacheKey);
   if (paginatedLogs) {
     logger.info('Logs fetched successfully');
-    return res.status(200).json({
+    return res.status(StatusCodes.OK).json({
       success: true,
       data: JSON.parse(paginatedLogs),
       message: 'Logs fetched successfully',
@@ -58,7 +59,7 @@ const getLogs = async (req, res) => {
 
   logger.info('Logs fetched successfully');
   res
-    .status(200)
+    .status(StatusCodes.OK)
     .json({ success: true, message: 'Logs fetched successfully', data: paginatedLogs });
 };
 

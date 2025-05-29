@@ -1,7 +1,12 @@
+const { StatusCodes } = require('http-status-codes');
+
 const { transporter } = require('../config/email.config');
 const { APIError } = require('../middlewares/error.middlewares');
 
 /**
+ * Function to send an email using the configured transporter
+ * Make sure to use this utility function ONLY inside a function that is wrapped with asyncHandler
+ * to handle errors properly.
  * @param {string} email user email to be addressed
  * @param {string} subject subject of email
  * @param {string?} text optional email text or content field
@@ -9,7 +14,7 @@ const { APIError } = require('../middlewares/error.middlewares');
  */
 const sendEmail = async (email, subject, text, html) => {
   if (!email) {
-    throw new APIError('Could not find "email" field', 400);
+    throw new APIError('Could not find "email" field', StatusCodes.BAD_REQUEST);
   }
 
   const mailOptions = { subject, to: email, from: process.env.AUTH_TRANSPORT_USERNAME };
@@ -19,7 +24,7 @@ const sendEmail = async (email, subject, text, html) => {
   } else if (html) {
     mailOptions.html = html;
   } else {
-    throw new APIError('Could not find "text" or "html" field', 400);
+    throw new APIError('Could not find "text" or "html" field', StatusCodes.BAD_REQUEST);
   }
 
   transporter.sendMail(mailOptions, (error, info) => {

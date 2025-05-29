@@ -3,6 +3,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const { Redis } = require('ioredis');
 const SHA256 = require('crypto-js/sha256');
+const { StatusCodes } = require('http-status-codes');
 
 const Vote = require('../models/vote.model');
 const Result = require('../models/result.model');
@@ -29,7 +30,7 @@ const castVote = async (req, res) => {
   const { error } = validateCastVote(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { election, user } = req;
@@ -145,7 +146,7 @@ const castVote = async (req, res) => {
 
   logger.info('Voted casted successfully');
   res
-    .status(200)
+    .status(StatusCodes.OK)
     .json({ success: true, data: { voteID: vote._id }, message: 'Voted casted successfully' });
 };
 
@@ -160,7 +161,7 @@ const verifyUserVote = async (req, res) => {
   const { error } = validateVerifyUserVote(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { voteID } = req.body;
@@ -171,7 +172,7 @@ const verifyUserVote = async (req, res) => {
   if (result) {
     logger.info('Vote checked successfully');
     return res
-      .status(200)
+      .status(StatusCodes.OK)
       .json({ success: true, message: 'Vote checked successfully', data: JSON.parse(result) });
   }
 
@@ -179,7 +180,7 @@ const verifyUserVote = async (req, res) => {
   const vote = await Vote.findById(voteID);
   if (!vote) {
     logger.error('Vote not found');
-    throw new APIError('Vote not found', 404);
+    throw new APIError('Vote not found', StatusCodes.NOT_FOUND);
   }
 
   // find the vote just before this vote
@@ -206,7 +207,9 @@ const verifyUserVote = async (req, res) => {
   await req.redisClient.setex(voteVerifyKey, redisCacheExpiry, JSON.stringify(result));
 
   logger.info('Vote checked successfully');
-  res.status(200).json({ success: true, message: 'Vote checked successfully', data: result });
+  res
+    .status(StatusCodes.OK)
+    .json({ success: true, message: 'Vote checked successfully', data: result });
 };
 
 /**
@@ -220,7 +223,7 @@ const getVotes = async (req, res) => {
   const { error } = validateGetVotes(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { id } = req.params;
@@ -235,7 +238,7 @@ const getVotes = async (req, res) => {
 
   logger.info('Votes fetched successfully');
   res
-    .status(200)
+    .status(StatusCodes.OK)
     .json({ success: true, message: 'Votes fetched successfully', data: paginatedVotes });
 };
 

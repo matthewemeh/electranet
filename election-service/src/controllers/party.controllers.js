@@ -1,5 +1,6 @@
 const express = require('express');
 const { Redis } = require('ioredis');
+const { StatusCodes } = require('http-status-codes');
 
 const Log = require('../models/log.model');
 const Party = require('../models/party.model');
@@ -23,7 +24,7 @@ const addParty = async (req, res) => {
   const { error } = validateParty(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   // proceed to create party
@@ -37,7 +38,9 @@ const addParty = async (req, res) => {
   });
 
   logger.info('Party added successfully');
-  res.status(201).json({ success: true, message: 'Party added successfully', data: party });
+  res
+    .status(StatusCodes.CREATED)
+    .json({ success: true, message: 'Party added successfully', data: party });
 };
 
 /**
@@ -51,7 +54,7 @@ const updateParty = async (req, res) => {
   const { error } = validatePartyUpdate(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { id } = req.params;
@@ -60,7 +63,7 @@ const updateParty = async (req, res) => {
   const party = await Party.findByIdAndUpdate(id, req.body);
   if (!party) {
     logger.error('Party not found');
-    throw new APIError('Party not found', 404);
+    throw new APIError('Party not found', StatusCodes.NOT_FOUND);
   }
 
   // create event log
@@ -71,7 +74,9 @@ const updateParty = async (req, res) => {
   });
 
   logger.info('Party updated successfully');
-  res.status(200).json({ success: true, message: 'Party updated successfully', data: null });
+  res
+    .status(StatusCodes.OK)
+    .json({ success: true, message: 'Party updated successfully', data: null });
 };
 
 /**
@@ -85,7 +90,7 @@ const getParties = async (req, res) => {
   const { error } = validateGetParties(req.query);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   let parties, partiesKey;
@@ -101,7 +106,7 @@ const getParties = async (req, res) => {
     parties = await req.redisClient.get(partiesKey);
     if (parties) {
       logger.info('Parties fetched successfully');
-      return res.status(200).json({
+      return res.status(StatusCodes.OK).json({
         success: true,
         data: JSON.parse(parties),
         message: 'Parties fetched successfully',
@@ -116,7 +121,7 @@ const getParties = async (req, res) => {
 
     logger.info('Parties fetched successfully');
     return res
-      .status(200)
+      .status(StatusCodes.OK)
       .json({ success: true, message: 'Parties fetched successfully', data: parties });
   }
 
@@ -128,7 +133,7 @@ const getParties = async (req, res) => {
   if (parties) {
     logger.info('Parties fetched successfully');
     return res
-      .status(200)
+      .status(StatusCodes.OK)
       .json({ success: true, message: 'Parties fetched successfully', data: JSON.parse(parties) });
   }
 
@@ -139,7 +144,9 @@ const getParties = async (req, res) => {
   await req.redisClient.setex(partiesKey, redisCacheExpiry, JSON.stringify(parties));
 
   logger.info('Parties fetched successfully');
-  res.status(200).json({ success: true, message: 'Parties fetched successfully', data: parties });
+  res
+    .status(StatusCodes.OK)
+    .json({ success: true, message: 'Parties fetched successfully', data: parties });
 };
 
 module.exports = {

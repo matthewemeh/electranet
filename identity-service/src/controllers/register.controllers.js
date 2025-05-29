@@ -1,5 +1,6 @@
 const express = require('express');
 const { Redis } = require('ioredis');
+const { StatusCodes } = require('http-status-codes');
 
 const { ROLES } = require('../constants');
 const User = require('../models/user.model');
@@ -25,7 +26,7 @@ const registerUser = async (req, res) => {
   const { error } = validateRegisterUser(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { email, ...body } = req.body;
@@ -35,14 +36,14 @@ const registerUser = async (req, res) => {
   let user = await fetchData(userCacheKey, { 'email.value': email }, User, req.redisClient);
   if (user) {
     logger.error('User already exists');
-    throw new APIError('User already exists', 409);
+    throw new APIError('User already exists', StatusCodes.CONFLICT);
   }
 
   // check that super admin has registered
   const superAdmin = await User.findOne({ role: ROLES.SUPER_ADMIN });
   if (!superAdmin) {
     logger.warn('Super Admin must be registered');
-    throw new APIError('Super Admin must be registered', 500);
+    throw new APIError('Super Admin must be registered', StatusCodes.INTERNAL_SERVER_ERROR);
   }
 
   // TODO: Integrate VIN verification using 3rd party API
@@ -59,7 +60,9 @@ const registerUser = async (req, res) => {
   await sendOTP(email, 'ELECTRANET: Verify Email', req.redisClient);
 
   logger.info('Registration successful');
-  res.status(201).json({ success: true, message: 'Registration successful', data: tokens });
+  res
+    .status(StatusCodes.CREATED)
+    .json({ success: true, message: 'Registration successful', data: tokens });
 };
 
 /**
@@ -73,7 +76,7 @@ const registerAdmin = async (req, res) => {
   const { error } = validateRegisterAdmin(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { email, role, ...body } = req.body;
@@ -83,22 +86,25 @@ const registerAdmin = async (req, res) => {
   let user = await fetchData(userCacheKey, { 'email.value': email }, User, req.redisClient);
   if (user) {
     logger.error('User already exists');
-    throw new APIError('User already exists', 409);
+    throw new APIError('User already exists', StatusCodes.CONFLICT);
   }
 
   const superAdmin = await User.findOne({ role: ROLES.SUPER_ADMIN });
   if (superAdmin && role === ROLES.SUPER_ADMIN) {
     // check to ensure only 1 super-admin exists always
     logger.error('Super Admin already exists');
-    throw new APIError('Super Admin already exists', 409);
+    throw new APIError('Super Admin already exists', StatusCodes.CONFLICT);
   } else if (!superAdmin && role !== ROLES.SUPER_ADMIN) {
     // check that super admin has registered
     logger.warn('Super Admin must be registered');
-    throw new APIError('Super Admin must be registered', 500);
+    throw new APIError('Super Admin must be registered', StatusCodes.INTERNAL_SERVER_ERROR);
   } else if (role === ROLES.SUPER_ADMIN && email !== process.env.SUPER_ADMIN_EMAIL) {
     // check that the registrant's email matches the expected super admin email
     logger.error('You are not the Super Admin. Please contact developer');
-    throw new APIError('You are not the Super Admin. Please contact developer', 403);
+    throw new APIError(
+      'You are not the Super Admin. Please contact developer',
+      StatusCodes.FORBIDDEN
+    );
   }
 
   user = await User.create({ ...body, role, email: { value: email } });
@@ -111,7 +117,9 @@ const registerAdmin = async (req, res) => {
   await sendOTP(email, 'ELECTRANET: Verify Email', req.redisClient);
 
   logger.info('Registration successful');
-  res.status(201).json({ success: true, message: 'Registration successful', data: tokens });
+  res
+    .status(StatusCodes.CREATED)
+    .json({ success: true, message: 'Registration successful', data: tokens });
 };
 
 /**
@@ -125,7 +133,7 @@ const verifyOtp = async (req, res) => {
   const { error } = validateVerifyOTP(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { email, otp } = req.body;
@@ -135,18 +143,18 @@ const verifyOtp = async (req, res) => {
   const user = await fetchData(userCacheKey, { 'email.value': email }, User, req.redisClient);
   if (!user) {
     logger.error('User not found');
-    throw new APIError('User not found', 404);
+    throw new APIError('User not found', StatusCodes.NOT_FOUND);
   } else if (user.email.verified) {
     logger.warn('User email is already verified!');
     return res
-      .status(200)
+      .status(StatusCodes.OK)
       .json({ success: true, message: 'Email is already verified!', data: null });
   }
 
   const isOtpValid = await verifyOTP(email, otp, req.redisClient);
   if (!isOtpValid) {
     logger.error('Invalid OTP!');
-    throw new APIError('Invalid OTP!', 403);
+    throw new APIError('Invalid OTP!', StatusCodes.FORBIDDEN);
   }
 
   // verify user email
@@ -157,7 +165,9 @@ const verifyOtp = async (req, res) => {
   await req.redisClient.setex(userCacheKey, redisCacheExpiry, JSON.stringify(user.toRaw()));
 
   logger.info('Email verification successful');
-  res.status(200).json({ success: true, message: 'Email verification successful', data: null });
+  res
+    .status(StatusCodes.OK)
+    .json({ success: true, message: 'Email verification successful', data: null });
 };
 
 module.exports = {

@@ -1,8 +1,10 @@
 require('dotenv').config();
+const hpp = require('hpp');
 const helmet = require('helmet');
 const express = require('express');
 const { Redis } = require('ioredis');
 const { connect } = require('mongoose');
+const { StatusCodes } = require('http-status-codes');
 
 const { logger } = require('./utils/logger.utils');
 const resultRoutes = require('./routes/results.routes');
@@ -10,9 +12,9 @@ const { configureCors } = require('./config/cors.config');
 const { useRedis } = require('./middlewares/redis.middlewares');
 const { configureRatelimit } = require('./config/ratelimit.config');
 const { globalErrorHandler } = require('./middlewares/error.middlewares');
-const { useEndpointCheck } = require('./middlewares/endpoint.middlewares');
 const { requestLogger } = require('./middlewares/request-logger.middlewares');
 const { configureRatelimitRedis } = require('./config/ratelimit-redis.config');
+const { notFound, methodNotAllowed } = require('./middlewares/endpoint.middlewares');
 
 const app = express();
 
@@ -28,6 +30,7 @@ const redisClient = new Redis(REDIS_URL);
 
 // apply middlewares
 app.use(helmet());
+app.use(hpp()); // HTTP Parameter Pollution protection
 app.use(configureCors());
 app.use(express.json({ limit: '1mb' }));
 app.use(requestLogger);
@@ -41,12 +44,15 @@ app.use(configureRatelimit(redisClient, 30));
 // Routes
 app.get('/health', (req, res) => {
   logger.info('Health check successful');
-  res.sendStatus(200);
+  res.sendStatus(StatusCodes.OK);
 });
 app.use('/api/results', useRedis(redisClient), resultRoutes);
 
-// check for calls on routes with wrong method
-app.use(useEndpointCheck(app));
+// handle method not allowed for each route
+app.use(methodNotAllowed);
+
+// catch-all route for undefined endpoints
+app.use(notFound);
 
 // error handler
 app.use(globalErrorHandler);

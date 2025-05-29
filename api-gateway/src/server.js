@@ -1,17 +1,22 @@
 require('dotenv').config();
+const hpp = require('hpp');
+const yaml = require('yamljs');
 const helmet = require('helmet');
 const express = require('express');
 const { Redis } = require('ioredis');
 const proxy = require('express-http-proxy');
+const swaggerUI = require('swagger-ui-express');
+const { StatusCodes } = require('http-status-codes');
 
+// const swaggerDocument = require('./swagger.yaml');
 const { logger } = require('./utils/logger.utils');
 const { configureCors } = require('./config/cors.config');
 const { configureRatelimit } = require('./config/ratelimit.config');
 const { validateApiKey } = require('./middlewares/auth.middlewares');
 const { urlVersioning } = require('./middlewares/version.middlewares');
 const { globalErrorHandler } = require('./middlewares/error.middlewares');
-const { useEndpointCheck } = require('./middlewares/endpoint.middlewares');
 const { requestLogger } = require('./middlewares/request-logger.middlewares');
+const { notFound, methodNotAllowed } = require('./middlewares/endpoint.middlewares');
 
 const app = express();
 
@@ -36,6 +41,7 @@ const redisClient = new Redis(REDIS_URL);
 // apply middlewares
 app.set('trust proxy', 1); // trust first proxy: Render
 app.use(helmet());
+app.use(hpp()); // HTTP Parameter Pollution protection
 app.use(configureCors());
 app.use(express.json({ limit: '1mb' }));
 app.use(requestLogger);
@@ -50,7 +56,7 @@ const proxyOptions = {
   proxyErrorHandler: (err, res, next) => {
     logger.error('Proxy error:', err.errors);
     res
-      .status(500)
+      .status(StatusCodes.INTERNAL_SERVER_ERROR)
       .json({ errors: null, success: false, message: `Internal server error: ${err.code}` });
   },
   proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
@@ -61,8 +67,11 @@ const proxyOptions = {
 
 app.get('/health', (req, res) => {
   logger.info('Health check successful');
-  res.sendStatus(200);
+  res.sendStatus(StatusCodes.OK);
 });
+
+// serve the OpenAPI specification
+// app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerDocument));
 
 // apply middleware to accept only specific version requests
 app.use(urlVersioning('v1'));
@@ -155,8 +164,11 @@ app.use(
   })
 );
 
-// check for calls on routes with wrong method
-app.use(useEndpointCheck(app));
+// handle method not allowed for each route
+app.use(methodNotAllowed);
+
+// catch-all route for undefined endpoints
+app.use(notFound);
 
 // error handler
 app.use(globalErrorHandler);

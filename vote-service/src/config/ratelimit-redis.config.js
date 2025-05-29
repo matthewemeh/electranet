@@ -1,5 +1,6 @@
 const { Redis } = require('ioredis');
 const { RateLimiterRedis } = require('rate-limiter-flexible');
+const { StatusCodes, ReasonPhrases } = require('http-status-codes');
 
 const { logger } = require('../utils/logger.utils');
 
@@ -20,7 +21,9 @@ const configureRatelimitRedis = redisClient => {
       .then(() => next())
       .catch(() => {
         logger.warn(`Rate limit exceeded for IP: ${req.ip}`);
-        res.status(429).json({ success: false, message: 'Too many requests', data: null });
+        res
+          .status(StatusCodes.TOO_MANY_REQUESTS)
+          .json({ success: false, message: ReasonPhrases.TOO_MANY_REQUESTS, data: null });
       });
   };
 };

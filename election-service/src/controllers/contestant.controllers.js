@@ -1,5 +1,6 @@
 const express = require('express');
 const { Redis } = require('ioredis');
+const { StatusCodes } = require('http-status-codes');
 
 const Log = require('../models/log.model');
 const { logger } = require('../utils/logger.utils');
@@ -25,7 +26,7 @@ const addContestant = async (req, res) => {
   const { error } = validateContestant(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   // proceed to create contestant
@@ -39,7 +40,9 @@ const addContestant = async (req, res) => {
   });
 
   logger.info('Contestant created');
-  res.status(201).json({ success: true, message: 'Contestant created', data: contestant });
+  res
+    .status(StatusCodes.CREATED)
+    .json({ success: true, message: 'Contestant created', data: contestant });
 };
 
 /**
@@ -53,7 +56,7 @@ const updateContestant = async (req, res) => {
   const { error } = validateContestantUpdate(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, 400);
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   // update the contestant
@@ -61,7 +64,7 @@ const updateContestant = async (req, res) => {
   const contestant = await Contestant.findByIdAndUpdate(id, req.body, { new: true });
   if (!contestant) {
     logger.error('Contestant not found');
-    throw new APIError('Contestant not found', 404);
+    throw new APIError('Contestant not found', StatusCodes.NOT_FOUND);
   }
 
   // clear election contestants cache
@@ -76,7 +79,9 @@ const updateContestant = async (req, res) => {
   });
 
   logger.info('Contestant updated successfully');
-  res.status(200).json({ success: true, message: 'Contestant updated successfully', data: null });
+  res
+    .status(StatusCodes.OK)
+    .json({ success: true, message: 'Contestant updated successfully', data: null });
 };
 
 /**
@@ -103,7 +108,7 @@ const getContestants = async (req, res) => {
   let paginatedContestants = await req.redisClient.get(contestantsCacheKey);
   if (paginatedContestants) {
     logger.info('Contestants fetched successfully');
-    return res.status(200).json({
+    return res.status(StatusCodes.OK).json({
       success: true,
       data: JSON.parse(paginatedContestants),
       message: 'Contestants fetched successfully',
@@ -124,7 +129,7 @@ const getContestants = async (req, res) => {
   );
 
   logger.info('Contestants fetched successfully');
-  res.status(200).json({
+  res.status(StatusCodes.OK).json({
     success: true,
     data: paginatedContestants,
     message: 'Contestants fetched successfully',
@@ -145,7 +150,7 @@ const getElectionContestants = async (req, res) => {
   let paginatedContestants = await req.redisClient.get(contestantsCacheKey);
   if (paginatedContestants) {
     logger.info('Contestants fetched successfully');
-    return res.status(200).json({
+    return res.status(StatusCodes.OK).json({
       success: true,
       data: JSON.parse(paginatedContestants),
       message: 'Contestants fetched successfully',
@@ -156,7 +161,7 @@ const getElectionContestants = async (req, res) => {
   const election = await Election.findById(id).populate('contestants');
   if (!election) {
     logger.info('Election not found');
-    throw new APIError('Election not found', 404);
+    throw new APIError('Election not found', StatusCodes.NOT_FOUND);
   }
 
   paginatedContestants = election.contestants.filter(({ isDeleted }) => !isDeleted);
@@ -165,7 +170,7 @@ const getElectionContestants = async (req, res) => {
   await req.redisClient.setex(contestantsCacheKey, 1800, JSON.stringify(paginatedContestants));
 
   logger.info('Contestants fetched successfully');
-  res.status(200).json({
+  res.status(StatusCodes.OK).json({
     success: true,
     data: paginatedContestants,
     message: 'Contestants fetched successfully',

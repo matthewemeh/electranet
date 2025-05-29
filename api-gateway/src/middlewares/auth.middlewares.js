@@ -1,3 +1,5 @@
+const { StatusCodes } = require('http-status-codes');
+
 const { logger } = require('../utils/logger.utils');
 const { asyncHandler, APIError } = require('./error.middlewares');
 
@@ -6,7 +8,7 @@ const validateApiKey = (req, res, next) => {
 
   if (!apiKey || apiKey !== process.env.API_KEY) {
     logger.warn('Unauthorized Request!');
-    throw new APIError('Unauthorized Request!', 407);
+    throw new APIError('Unauthorized Request!', StatusCodes.PROXY_AUTHENTICATION_REQUIRED);
   }
 
   next();

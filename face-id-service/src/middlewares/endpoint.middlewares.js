@@ -1,19 +1,26 @@
 const express = require('express');
-const listEndpoints = require('express-list-endpoints');
+const { StatusCodes } = require('http-status-codes');
 
 /**
- * @param {express.Express | express.Router} app
+ * Middleware to handle 404 Not Found for undefined routes
+ * @param {express.Request} req
+ * @param {express.Response} res
  */
-const useEndpointCheck = app => {
-  const endpoints = listEndpoints(app);
+const notFound = (req, res) => res.status(StatusCodes.NOT_FOUND).send('Resource not found');
 
-  return (req, res, next) => {
-    const matched = endpoints.find(e => e.path === req.path);
-    if (matched && !matched.methods.includes(req.method)) {
-      return res.status(405).send('Method Not Allowed');
-    }
-    next();
-  };
+/**
+ * Middleware to handle Method Not Allowed for defined routes
+ * @param {express.Request} req
+ * @param {express.Response} res
+ * @param {express.NextFunction} next
+ */
+const methodNotAllowed = (req, res, next) => {
+  if (!req.route) {
+    return res
+      .status(StatusCodes.METHOD_NOT_ALLOWED)
+      .send(`Cannot ${req.method} ${req.originalUrl}`);
+  }
+  next();
 };
 
-module.exports = { useEndpointCheck };
+module.exports = { notFound, methodNotAllowed };
