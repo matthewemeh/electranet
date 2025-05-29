@@ -12,33 +12,21 @@ const getUserKey = (...values) => `user:${values.join(':')}`;
 
 /**
  * @param {Array<string | number>} values unique values to be used in key. The order of the arguments affects the key!!!
- * @returns {string} users key in a standard pattern
+ * @returns {string} logs key in a standard pattern
  */
-const getUsersKey = (...values) => `users:${values.join(':')}`;
+const getLogsKey = (...values) => `logs:${values.join(':')}`;
 
 /**
  * @param {Array<string | number>} values unique values to be used in key. The order of the arguments affects the key!!!
- * @returns {string} OTP key in a standard pattern
+ * @returns {string} logs key in a standard pattern
  */
-const getOtpKey = (...values) => `otp:${values.join(':')}`;
-
-/**
- * @param {Array<string | number>} values unique values to be used in key. The order of the arguments affects the key!!!
- * @returns {string} token key in a standard pattern
- */
-const getTokenKey = (...values) => `token:${values.join(':')}`;
+const getNotificationsKey = (...values) => `notifications:${values.join(':')}`;
 
 /**
  * @param {Array<string | number>} values unique values to be used in key. The order of the arguments affects the key!!!
  * @returns {string} admin token key in a standard pattern
  */
 const getAdminTokenKey = (...values) => `admin-token:${values.join(':')}`;
-
-/**
- * @param {Array<string | number>} values unique values to be used in key. The order of the arguments affects the key!!!
- * @returns {string} admin tokens key in a standard pattern
- */
-const getAdminTokensKey = (...values) => `admin-tokens:${values.join(':')}`;
 
 /**
  * This function checks Redis cache before checking the database for requested object
@@ -78,12 +66,10 @@ const deleteCacheKey = async (cacheKey, redisClient) => {
 
 module.exports = {
   fetchData,
-  getOtpKey,
+  getLogsKey,
   getUserKey,
-  getUsersKey,
-  getTokenKey,
   deleteCacheKey,
   getAdminTokenKey,
   redisCacheExpiry,
-  getAdminTokensKey,
+  getNotificationsKey,
 };

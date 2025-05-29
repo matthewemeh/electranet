@@ -29,10 +29,12 @@ const {
   ELECTION_SERVICE_URL,
   IDENTITY_SERVICE_URL,
   VOTE_SERVICE_AUTH_KEY,
+  NOTIFICATION_SERVICE_URL,
   RESULTS_SERVICE_AUTH_KEY,
   FACE_ID_SERVICE_AUTH_KEY,
   ELECTION_SERVICE_AUTH_KEY,
   IDENTITY_SERVICE_AUTH_KEY,
+  NOTIFICATION_SERVICE_AUTH_KEY,
 } = process.env;
 
 // initialize Redis client
@@ -146,6 +148,22 @@ app.use(
   })
 );
 
+// setting up proxy for notification services
+const notificationServiceProxy = proxy(NOTIFICATION_SERVICE_URL, {
+  ...proxyOptions,
+  proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+    proxyReqOpts.headers['Content-Type'] = 'application/json';
+    proxyReqOpts.headers['x-auth-key'] = NOTIFICATION_SERVICE_AUTH_KEY;
+    return proxyReqOpts;
+  },
+  userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+    logger.info(`Response received from Notification service: ${proxyRes.statusCode}`);
+    return proxyResData;
+  },
+});
+app.use('/v1/logs', validateApiKey, notificationServiceProxy);
+app.use('/v1/notifications', validateApiKey, notificationServiceProxy);
+
 // setting up proxy for Face ID services
 app.use(
   '/v1/face-id',
@@ -180,5 +198,6 @@ app.listen(PORT, () => {
   logger.info(`Voting service is running on: ${VOTE_SERVICE_URL}`);
   logger.info(`Results service is running on: ${RESULTS_SERVICE_URL}`);
   logger.info(`Face ID service is running on: ${FACE_ID_SERVICE_URL}`);
+  logger.info(`Notification service is running on: ${NOTIFICATION_SERVICE_URL}`);
   logger.info(`Redis URL: ${REDIS_URL}`);
 });

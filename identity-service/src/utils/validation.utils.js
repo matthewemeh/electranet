@@ -151,19 +151,6 @@ const validateGetUsers = data => {
   return schema.validate(data);
 };
 
-const validateGetLogs = data => {
-  const schema = Joi.object({
-    endTime: Joi.date(),
-    startTime: Joi.date(),
-    limit: Joi.string().equal('10', '25', '50'),
-    page: Joi.string()
-      .pattern(/^\d+$/)
-      .messages({ 'string.pattern.base': '"page" must be a valid integer' }),
-  });
-
-  return schema.validate(data);
-};
-
 const validateGetAdminTokens = data => {
   const schema = Joi.object({
     limit: Joi.string().equal('10', '25', '50'),
@@ -178,7 +165,6 @@ const validateGetAdminTokens = data => {
 module.exports = {
   validateLogin,
   validateLogout,
-  validateGetLogs,
   validateSendOTP,
   validateGetUsers,
   validateVerifyOTP,

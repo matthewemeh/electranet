@@ -1,0 +1,72 @@
+const express = require('express');
+const { Redis } = require('ioredis');
+const { StatusCodes } = require('http-status-codes');
+
+const { logger } = require('../utils/logger.utils');
+const Notification = require('../models/notification.model');
+const { validateGetNotifications } = require('../utils/validation.utils');
+const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
+const { redisCacheExpiry, getNotificationsKey } = require('../utils/redis.utils');
+
+/**
+ * @param {express.Request & {redisClient: Redis}} req
+ * @param {express.Response} res
+ */
+const getNotifications = async (req, res) => {
+  logger.info('Get notifications endpoint called');
+
+  // validate request query
+  const { error } = validateGetNotifications(req.query);
+  if (error) {
+    logger.warn('Query Validation error', { message: error.details[0].message });
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
+  }
+
+  const { user } = req;
+  const { startTime, endTime } = req.query;
+  const page = Number(req.query.page ?? 1);
+  const limit = Number(req.query.limit ?? 10);
+
+  // check cache for notifications
+  const notificationsCacheKey = getNotificationsKey(page, limit, startTime, endTime);
+  let paginatedNotifications = await req.redisClient.get(notificationsCacheKey);
+  if (paginatedNotifications) {
+    logger.info('Notifications fetched successfully');
+    return res.status(StatusCodes.OK).json({
+      success: true,
+      data: JSON.parse(paginatedNotifications),
+      message: 'Notifications fetched successfully',
+    });
+  }
+
+  // fallback to DB
+  const paginationFilters = { $and: [{ user: user._id }] };
+  if (startTime) {
+    paginationFilters.$and.push({ createdAt: { $gte: new Date(startTime) } });
+  }
+  if (endTime) {
+    paginationFilters.$and.push({ createdAt: { $lte: new Date(endTime) } });
+  }
+
+  paginatedNotifications = await Notification.paginate(paginationFilters, {
+    page,
+    limit,
+    sort: { createdAt: -1 },
+  });
+
+  // cache fetched notifications
+  await req.redisClient.setex(
+    notificationsCacheKey,
+    redisCacheExpiry,
+    JSON.stringify(paginatedNotifications)
+  );
+
+  logger.info('Notifications fetched successfully');
+  res.status(StatusCodes.OK).json({
+    success: true,
+    data: paginatedNotifications,
+    message: 'Notifications fetched successfully',
+  });
+};
+
+module.exports = { getNotifications: asyncHandler(getNotifications) };

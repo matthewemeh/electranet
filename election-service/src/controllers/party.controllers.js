@@ -84,12 +84,12 @@ const updateParty = async (req, res) => {
  * @param {express.Response} res
  */
 const getParties = async (req, res) => {
-  logger.info('Edit Party endpoint called');
+  logger.info('Get Parties endpoint called');
 
   // validate request query
   const { error } = validateGetParties(req.query);
   if (error) {
-    logger.warn('Validation error', { message: error.details[0].message });
+    logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
