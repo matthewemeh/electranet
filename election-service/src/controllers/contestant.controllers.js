@@ -7,7 +7,11 @@ const { logger } = require('../utils/logger.utils');
 const Election = require('../models/election.model');
 const Contestant = require('../models/contestant.model');
 const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
-const { validateContestant, validateContestantUpdate } = require('../utils/validation.utils');
+const {
+  validateContestant,
+  validateGetContestants,
+  validateContestantUpdate,
+} = require('../utils/validation.utils');
 const {
   deleteCacheKey,
   redisCacheExpiry,
@@ -91,9 +95,15 @@ const updateContestant = async (req, res) => {
 const getContestants = async (req, res) => {
   logger.info('Get Contestants endpoint called');
 
-  const { party, isDeleted, gender, firstName, lastName } = req.query;
-  const page = Number(req.query.page ?? 1);
-  const limit = Number(req.query.limit ?? 10);
+  // validate request query
+  const { error, value } = validateGetContestants(req.query);
+  if (error) {
+    logger.warn('Query Validation error', { message: error.details[0].message });
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
+  }
+
+  const { page, limit, ...docQuery } = value;
+  const { party, isDeleted, gender, firstName, lastName } = docQuery;
 
   // check cached contestants
   const contestantsCacheKey = getContestantsKey(
@@ -116,10 +126,11 @@ const getContestants = async (req, res) => {
   }
 
   // fallback to DB
-  paginatedContestants = await Contestant.paginate(
-    { party, gender, lastName, firstName, isDeleted },
-    { page, limit, sort: { updatedAt: -1 } }
-  );
+  paginatedContestants = await Contestant.paginate(docQuery, {
+    page,
+    limit,
+    sort: { updatedAt: -1 },
+  });
 
   // cache fetched contestants
   await req.redisClient.setex(
@@ -147,32 +158,38 @@ const getElectionContestants = async (req, res) => {
 
   // check cached election contestants
   const contestantsCacheKey = getElectionContestantsKey(id);
-  let paginatedContestants = await req.redisClient.get(contestantsCacheKey);
-  if (paginatedContestants) {
+  let contestants = await req.redisClient.get(contestantsCacheKey);
+  if (contestants) {
     logger.info('Contestants fetched successfully');
     return res.status(StatusCodes.OK).json({
       success: true,
-      data: JSON.parse(paginatedContestants),
+      data: JSON.parse(contestants),
       message: 'Contestants fetched successfully',
     });
   }
 
   // fallback to DB
-  const election = await Election.findById(id).populate('contestants');
+  const election = await Election.findById(id)
+    .select('contestants -_id')
+    .populate({
+      path: 'contestants',
+      select: '-election -createdAt -updatedAt -__v',
+      populate: { path: 'party', select: '-createdAt -updatedAt -__v' },
+    });
   if (!election) {
     logger.info('Election not found');
     throw new APIError('Election not found', StatusCodes.NOT_FOUND);
   }
 
-  paginatedContestants = election.contestants.filter(({ isDeleted }) => !isDeleted);
+  contestants = election.contestants.filter(({ isDeleted }) => !isDeleted);
 
   // cache fetched election contestants
-  await req.redisClient.setex(contestantsCacheKey, 1800, JSON.stringify(paginatedContestants));
+  await req.redisClient.setex(contestantsCacheKey, 1800, JSON.stringify(contestants));
 
   logger.info('Contestants fetched successfully');
   res.status(StatusCodes.OK).json({
     success: true,
-    data: paginatedContestants,
+    data: contestants,
     message: 'Contestants fetched successfully',
   });
 };

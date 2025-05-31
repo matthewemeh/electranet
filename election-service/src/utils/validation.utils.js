@@ -17,7 +17,11 @@ const validateElectionUpdate = data => {
     startTime: Joi.date(),
     name: Joi.string().trim().min(2).max(256),
     delimitationCode: Joi.string().trim().max(20),
-  }).required();
+  })
+    .min(1)
+    .messages({
+      'object.min': 'At least {{#limit}} field must be provided.',
+    });
 
   return schema.validate(data);
 };
@@ -35,7 +39,7 @@ const validateContestant = data => {
     party: Joi.string(),
     profileImageUrl: Joi.string().required(),
     middleName: Joi.string().trim().min(2).max(64),
-    stateOfOrigin: Joi.string().trim().max(20).required(),
+    stateOfOrigin: Joi.string().trim().max(30).required(),
     gender: Joi.string().equal('MALE', 'FEMALE').required(),
     lastName: Joi.string().trim().min(2).max(64).required(),
     firstName: Joi.string().trim().min(2).max(64).required(),
@@ -48,13 +52,31 @@ const validateContestantUpdate = data => {
   const schema = Joi.object({
     party: Joi.string(),
     profileImageUrl: Joi.string(),
-    isDeleted: Joi.equal(true, false),
-    stateOfOrigin: Joi.string().trim().max(20),
+    isDeleted: Joi.boolean().strict(),
+    stateOfOrigin: Joi.string().trim().max(30),
     gender: Joi.string().equal('MALE', 'FEMALE'),
     lastName: Joi.string().trim().min(2).max(64),
     firstName: Joi.string().trim().min(2).max(64),
     middleName: Joi.string().trim().min(2).max(64),
-  }).required();
+  })
+    .min(1)
+    .messages({
+      'object.min': 'At least {{#limit}} field must be provided.',
+    });
+
+  return schema.validate(data);
+};
+
+const validateGetContestants = data => {
+  const schema = Joi.object({
+    party: Joi.string(),
+    lastName: Joi.string(),
+    firstName: Joi.string(),
+    isDeleted: Joi.boolean(),
+    page: Joi.number().min(1).default(1),
+    gender: Joi.string().equal('MALE', 'FEMALE'),
+    limit: Joi.number().equal(10, 25, 50).default(10),
+  });
 
   return schema.validate(data);
 };
@@ -64,10 +86,8 @@ const validateGetElections = data => {
     endTime: Joi.date(),
     startTime: Joi.date(),
     delimitationCode: Joi.string(),
-    limit: Joi.string().equal('10', '25', '50'),
-    page: Joi.string()
-      .pattern(/^\d+$/)
-      .messages({ 'string.pattern.base': '"page" must be a valid integer' }),
+    page: Joi.number().min(1).default(1),
+    limit: Joi.number().equal(10, 25, 50).default(10),
   });
 
   return schema.validate(data);
@@ -77,10 +97,8 @@ const validateGetUserElections = data => {
   const schema = Joi.object({
     endTime: Joi.date(),
     startTime: Joi.date(),
-    limit: Joi.string().equal('10', '25', '50'),
-    page: Joi.string()
-      .pattern(/^\d+$/)
-      .messages({ 'string.pattern.base': '"page" must be a valid integer' }),
+    page: Joi.number().min(1).default(1),
+    limit: Joi.number().equal(10, 25, 50).default(10),
   });
 
   return schema.validate(data);
@@ -103,18 +121,20 @@ const validatePartyUpdate = data => {
     motto: Joi.string().max(256),
     shortName: Joi.string().trim().max(10).uppercase(),
     longName: Joi.string().trim().max(128).uppercase(),
-  }).required();
+  })
+    .min(1)
+    .messages({
+      'object.min': 'At least {{#limit}} field must be provided.',
+    });
 
   return schema.validate(data);
 };
 
 const validateGetParties = data => {
   const schema = Joi.object({
-    limit: Joi.string().equal('10', '25', '50'),
-    page: Joi.string()
-      .pattern(/^\d+$/)
-      .messages({ 'string.pattern.base': '"page" must be a valid integer' }),
-  }).required();
+    page: Joi.number().min(1),
+    limit: Joi.number().equal(10, 25, 50),
+  });
 
   return schema.validate(data);
 };
@@ -126,6 +146,7 @@ module.exports = {
   validateContestant,
   validatePartyUpdate,
   validateGetElections,
+  validateGetContestants,
   validateElectionUpdate,
   validateGetUserElections,
   validateContestantUpdate,

@@ -7,7 +7,7 @@ const { ADMIN_TOKEN_STATUSES } = require('../constants');
 const AdminTokenSchema = new Schema(
   {
     expiresAt: { type: Date },
-    user: { type: Schema.Types.ObjectId, unique: true, required: true },
+    user: { type: Schema.Types.ObjectId, ref: 'User', unique: true, required: true },
     statusCode: {
       type: String,
       uppercase: true,

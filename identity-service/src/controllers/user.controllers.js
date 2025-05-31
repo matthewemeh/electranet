@@ -3,16 +3,17 @@ const express = require('express');
 const { Redis } = require('ioredis');
 const { StatusCodes } = require('http-status-codes');
 
+const { ROLES } = require('../constants');
 const Log = require('../models/log.model');
 const User = require('../models/user.model');
 const { logger } = require('../utils/logger.utils');
 const { sendEmail } = require('../utils/email.utils');
 const AdminToken = require('../models/admin-token.model');
-const { ROLES, ADMIN_TOKEN_STATUSES } = require('../constants');
 const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
 const {
   validateGetUsers,
   validateAdminInvite,
+  validateModifyToken,
   validateGetAdminTokens,
 } = require('../utils/validation.utils');
 const {
@@ -39,9 +40,8 @@ const getUsers = async (req, res) => {
   }
 
   const { role: adminRole } = req.user;
-  const { delimitationCode, email, firstName, lastName, role } = req.query;
-  const page = Number(req.query.page ?? 1);
-  const limit = Number(req.query.limit ?? 10);
+  const { page, limit, ...docQuery } = req.query;
+  const { delimitationCode, email, firstName, lastName, role } = docQuery;
 
   // check cache for users
   const usersCacheKey = getUsersKey(
@@ -128,8 +128,11 @@ const inviteAdmin = async (req, res) => {
     req.redisClient
   );
   if (!user) {
-    logger.error('User has not registered as an admin on the plaform');
-    throw new APIError('User has not registered as an admin on the plaform', StatusCodes.NOT_FOUND);
+    logger.error('User has not registered as an admin on the platform');
+    throw new APIError(
+      'User has not registered as an admin on the platform',
+      StatusCodes.NOT_FOUND
+    );
   }
 
   try {
@@ -168,28 +171,47 @@ const inviteAdmin = async (req, res) => {
  * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
  */
-const revokeRights = async (req, res) => {
-  logger.info('Revoke Admin Rights endpoint called');
+const modifyAdminToken = async (req, res) => {
+  logger.info('Modify Admin Rights endpoint called');
+
+  // validate the request body
+  const { error } = validateModifyToken(req.body);
+  if (error) {
+    logger.warn('Validation error', { message: error.details[0].message });
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
+  }
 
   const { id } = req.params;
+  const { expiresAt, statusCode } = req.body;
 
-  // revoke admin token status
-  const adminToken = await AdminToken.findByIdAndUpdate(
-    id,
-    { statusCode: ADMIN_TOKEN_STATUSES.REVOKED },
-    { new: true }
-  );
+  // check that admin token exists
+  const adminToken = await AdminToken.findById(id);
   if (!adminToken) {
     logger.error('Admin Token not found');
     throw new APIError('Admin Token not found', StatusCodes.NOT_FOUND);
   }
 
+  // modify admin token
+  if (statusCode) {
+    adminToken.statusCode = statusCode;
+  }
+  if (expiresAt) {
+    if (expiresAt > -1) {
+      adminToken.expiresAt = expiresAt;
+    } else if (expiresAt === -1) {
+      adminToken.set('expiresAt', undefined);
+    }
+  }
+  await adminToken.save();
+
   // update admin token cache
   const adminTokenCacheKey = getAdminTokenKey(adminToken.user);
   await req.redisClient.setex(adminTokenCacheKey, redisCacheExpiry, JSON.stringify(adminToken));
 
-  logger.info('Admin rights revoked');
-  res.status(StatusCodes.OK).json({ success: true, message: 'Admin rights revoked', data: null });
+  logger.info('Admin rights modified successfully');
+  res
+    .status(StatusCodes.OK)
+    .json({ success: true, message: 'Admin rights modified successfully', data: null });
 };
 
 /**
@@ -200,14 +222,13 @@ const getAdminTokens = async (req, res) => {
   logger.info('Get Admin Tokens endpoint called');
 
   // validate the request query
-  const { error } = validateGetAdminTokens(req.query);
+  const { error, value } = validateGetAdminTokens(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const page = Number(req.query.page ?? 1);
-  const limit = Number(req.query.limit ?? 10);
+  const { page, limit } = value;
 
   // check cached admin tokens
   const tokensCacheKey = getAdminTokensKey(page, limit);
@@ -222,9 +243,15 @@ const getAdminTokens = async (req, res) => {
   }
 
   // fallback to DB
-  paginatedAdminTokens = AdminToken.paginate(
+  paginatedAdminTokens = await AdminToken.paginate(
     {},
-    { page, limit, sort: { createdAt: -1 }, populate: 'user' }
+    {
+      page,
+      limit,
+      sort: { createdAt: -1 },
+      select: '-updatedAt -__v',
+      populate: { path: 'user', select: 'firstName lastName email.value -_id' },
+    }
   );
 
   // cache fetched admin tokens
@@ -245,6 +272,6 @@ const getAdminTokens = async (req, res) => {
 module.exports = {
   getUsers: asyncHandler(getUsers),
   inviteAdmin: asyncHandler(inviteAdmin),
-  revokeRights: asyncHandler(revokeRights),
   getAdminTokens: asyncHandler(getAdminTokens),
+  modifyAdminToken: asyncHandler(modifyAdminToken),
 };

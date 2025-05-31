@@ -9,8 +9,8 @@ const {
 const {
   getUsers,
   inviteAdmin,
-  revokeRights,
   getAdminTokens,
+  modifyAdminToken,
 } = require('../controllers/user.controllers');
 
 router.use(validateAuthKey);
@@ -27,6 +27,6 @@ router.post('/invite', inviteAdmin);
 
 router.get('/tokens', getAdminTokens);
 
-router.patch('/revoke/:id', revokeRights);
+router.patch('/tokens/:id', modifyAdminToken);
 
 module.exports = router;

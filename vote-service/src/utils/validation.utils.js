@@ -20,11 +20,9 @@ const validateVerifyUserVote = data => {
 
 const validateGetVotes = data => {
   const schema = Joi.object({
-    limit: Joi.string().equal('10', '25', '50'),
-    page: Joi.string()
-      .pattern(/^\d+$/)
-      .messages({ 'string.pattern.base': '"page" must be a valid integer' }),
-  }).required();
+    page: Joi.number().min(1).default(1),
+    limit: Joi.number().equal(10, 25, 50).default(10),
+  });
 
   return schema.validate(data);
 };

@@ -46,7 +46,7 @@ const globalErrorHandler = (error, req, res, next) => {
       errorResponse.errors[key] = value.message;
     });
 
-    logger.error('ValidationError', errorResponse.message);
+    logger.error('ValidationError', { message: errorResponse.message });
     return res.status(StatusCodes.BAD_REQUEST).json(errorResponse);
   } else if (error.name === 'MongoServerError') {
     const errorResponse = { errors: null, success: false, message: error.message };
@@ -58,7 +58,7 @@ const globalErrorHandler = (error, req, res, next) => {
       return res.status(StatusCodes.CONFLICT).json(errorResponse);
     }
 
-    logger.error('MongoServerError', errorResponse.message);
+    logger.error('MongoServerError', { message: errorResponse.message });
     return res.status(StatusCodes.BAD_REQUEST).json(errorResponse);
   } else {
     logger.error(error.stack);

@@ -1,6 +1,6 @@
 const Joi = require('joi');
 
-const { ROLES } = require('../constants');
+const { ROLES, ADMIN_TOKEN_STATUSES } = require('../constants');
 
 const validateRegisterUser = data => {
   const schema = Joi.object({
@@ -60,7 +60,7 @@ const validateRegisterAdmin = data => {
 
 const validateSendOTP = data => {
   const schema = Joi.object({
-    duration: Joi.number(),
+    duration: Joi.number().strict(),
     subject: Joi.string().required(),
     email: Joi.string().email().required(),
   });
@@ -135,17 +135,28 @@ const validateAdminInvite = data => {
   return schema.validate(data);
 };
 
+const validateModifyToken = data => {
+  const schema = Joi.object({
+    expiresAt: Joi.number().strict().min(-1),
+    statusCode: Joi.string().equal(...Object.values(ADMIN_TOKEN_STATUSES)),
+  })
+    .min(1)
+    .messages({
+      'object.min': 'At least {{#limit}} field must be provided.',
+    });
+
+  return schema.validate(data);
+};
+
 const validateGetUsers = data => {
   const schema = Joi.object({
     lastName: Joi.string(),
     firstName: Joi.string(),
     email: Joi.string().email(),
     delimitationCode: Joi.string(),
-    limit: Joi.string().equal('10', '25', '50'),
+    page: Joi.number().min(1).default(1),
+    limit: Joi.number().equal(10, 25, 50).default(10),
     role: Joi.string().equal(ROLES.ADMIN, ROLES.USER),
-    page: Joi.string()
-      .pattern(/^\d+$/)
-      .messages({ 'string.pattern.base': '"page" must be a valid integer' }),
   });
 
   return schema.validate(data);
@@ -153,10 +164,8 @@ const validateGetUsers = data => {
 
 const validateGetAdminTokens = data => {
   const schema = Joi.object({
-    limit: Joi.string().equal('10', '25', '50'),
-    page: Joi.string()
-      .pattern(/^\d+$/)
-      .messages({ 'string.pattern.base': '"page" must be a valid integer' }),
+    page: Joi.number().min(1).default(1),
+    limit: Joi.number().equal(10, 25, 50).default(10),
   });
 
   return schema.validate(data);
@@ -168,6 +177,7 @@ module.exports = {
   validateSendOTP,
   validateGetUsers,
   validateVerifyOTP,
+  validateModifyToken,
   validateAdminInvite,
   validateRefreshToken,
   validateRegisterUser,

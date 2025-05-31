@@ -54,15 +54,14 @@ const getElections = async (req, res) => {
   logger.info('Get Elections endpoint called');
 
   // validate request query
-  const { error } = validateGetElections(req.body);
+  const { error, value } = validateGetElections(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { delimitationCode, startTime, endTime } = req.query;
-  const page = Number(req.query.page ?? 1);
-  const limit = Number(req.query.limit ?? 10);
+  const { page, limit, ...docQuery } = value;
+  const { delimitationCode, startTime, endTime } = docQuery;
 
   // check cached elections
   const electionsCacheKey = getElectionsKey(page, limit, delimitationCode, startTime, endTime);
@@ -76,22 +75,19 @@ const getElections = async (req, res) => {
     });
   }
 
-  const paginationFilters = {};
-  if (delimitationCode) {
-    paginationFilters.delimitationCode = delimitationCode;
-  }
   if (startTime) {
-    paginationFilters.startTime = { $gte: new Date(startTime) };
+    docQuery.startTime = { $gte: startTime };
   }
   if (endTime) {
-    paginationFilters.endTime = { $lte: new Date(endTime) };
+    docQuery.endTime = { $lte: endTime };
   }
 
   // fallback to DB
-  paginatedElections = await Election.paginate(paginationFilters, {
+  paginatedElections = await Election.paginate(docQuery, {
     page,
     limit,
     sort: { createdAt: -1 },
+    select: '-contestants -createdAt -updatedAt -__v',
   });
 
   // cache fetched elections
@@ -115,16 +111,15 @@ const getUserElections = async (req, res) => {
   logger.info('Get User Elections endpoint called');
 
   // validate request query
-  const { error } = validateGetUserElections(req.body);
+  const { error, value } = validateGetUserElections(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { user } = req;
-  const { startTime, endTime } = req.query;
-  const page = Number(req.query.page ?? 1);
-  const limit = Number(req.query.limit ?? 10);
+  const { page, limit, ...docQuery } = value;
+  const { startTime, endTime } = docQuery;
 
   // check cache for user elections
   const userElectionsKey = getUserElectionsKey(user._id, page, limit, startTime, endTime);
@@ -138,19 +133,20 @@ const getUserElections = async (req, res) => {
     });
   }
 
-  const paginationFilters = { delimitationCode: { $in: user.getDelimitations() } };
+  docQuery.delimitationCode = { $in: user.getDelimitations() };
   if (startTime) {
-    paginationFilters.startTime = { $gte: new Date(startTime) };
+    docQuery.startTime = { $gte: startTime };
   }
   if (endTime) {
-    paginationFilters.endTime = { $lte: new Date(endTime) };
+    docQuery.endTime = { $lte: endTime };
   }
 
   // fallback to DB
-  paginatedElections = await Election.paginate(paginationFilters, {
+  paginatedElections = await Election.paginate(docQuery, {
     page,
     limit,
     sort: { createdAt: -1 },
+    select: '-createdAt -updatedAt -__v -startTime -endTime -contestants',
   });
 
   // cache fetched user elections
@@ -192,11 +188,11 @@ const updateElection = async (req, res) => {
   }
 
   // check if fields are editable
-  if ('endTime' in payload && election.hasEnded) {
+  if (payload.endTime && election.hasEnded) {
     logger.info('Completed election cannot be edited');
     throw new APIError('Completed election cannot be edited', StatusCodes.BAD_REQUEST);
   } else if (
-    ('startTime' in payload || 'name' in payload || 'delimitationCode' in payload) &&
+    (payload.startTime || payload.name || payload.delimitationCode) &&
     election.hasStarted
   ) {
     logger.info('Commenced election cannot be edited');
@@ -204,9 +200,7 @@ const updateElection = async (req, res) => {
   }
 
   // proceed to update election
-  Object.entries(payload).forEach(([key, value]) => {
-    election[key] = value;
-  });
+  Object.assign(election, payload);
   await election.save();
 
   // create an event log
@@ -231,13 +225,18 @@ const deleteElection = async (req, res) => {
 
   const { id } = req.params;
 
-  // delete the election if it hasn't started yet
-  const now = new Date();
-  const election = await Election.findOneAndDelete({ _id: id, startTime: { $gt: now } });
+  // check if election exists and has not started
+  const election = await Election.findById(id);
   if (!election) {
-    logger.error('Election has already commenced or does not exist');
-    throw new APIError('Election has already commenced or does not exist', StatusCodes.NOT_FOUND);
+    logger.error('Election not found');
+    throw new APIError('Election not found', StatusCodes.NOT_FOUND);
+  } else if (election.hasStarted) {
+    logger.error('Election has already commenced');
+    throw new APIError('Election has already commenced', StatusCodes.BAD_REQUEST);
   }
+
+  // delete the election
+  await Election.deleteOne({ _id: id });
 
   // remove the contestants' election field
   await Contestant.updateMany({ election: id }, { $unset: { election: '' } });
@@ -282,21 +281,22 @@ const addContestant = async (req, res) => {
     throw new APIError('Contestant not registered under a party', StatusCodes.BAD_REQUEST);
   }
 
-  // add contestant to election if it hasn't started and contestant hasn't been added already
-  const now = new Date();
-  const election = await Election.findOneAndUpdate(
-    { _id: id, startTime: { $gt: now }, contestants: { $ne: contestantID } },
-    { $push: { contestants: contestantID } }
-  );
+  // check if election exists, has not started and contestant hasn't been added already
+  const election = await Election.findById(id);
   if (!election) {
-    logger.error(
-      "Election has already commenced, doesn't exist or already has contestant registered"
-    );
-    throw new APIError(
-      "Election has already commenced, doesn't exist or already has contestant registered",
-      StatusCodes.NOT_FOUND
-    );
+    logger.error('Election not found');
+    throw new APIError('Election not found', StatusCodes.NOT_FOUND);
+  } else if (election.hasStarted) {
+    logger.error('Election has already commenced');
+    throw new APIError('Election has already commenced', StatusCodes.BAD_REQUEST);
+  } else if (election.contestants.includes(contestantID)) {
+    logger.error('Contestant already registered for this election');
+    throw new APIError('Contestant already registered for this election', StatusCodes.BAD_REQUEST);
   }
+
+  // add contestant to election
+  election.contestants.push(contestantID);
+  await election.save();
 
   // update contestant's participating election
   contestant.election = id;
@@ -339,20 +339,26 @@ const removeContestant = async (req, res) => {
     throw new APIError('Contestant not found', StatusCodes.NOT_FOUND);
   }
 
-  // remove contestant from election if it hasn't started yet
-  const now = new Date();
-  const election = await Election.findOneAndUpdate(
-    { _id: id, startTime: { $gt: now } },
-    { $pull: { contestants: contestantID } }
-  );
+  // check if election exists, has not started and contestant is registered
+  const election = await Election.findById(id);
   if (!election) {
-    logger.error("Election has already commenced or doesn't exist");
-    throw new APIError("Election has already commenced or doesn't exist", StatusCodes.NOT_FOUND);
+    logger.error('Election not found');
+    throw new APIError('Election not found', StatusCodes.NOT_FOUND);
+  } else if (election.hasStarted) {
+    logger.error('Election has already commenced');
+    throw new APIError('Election has already commenced', StatusCodes.BAD_REQUEST);
+  } else if (!election.contestants.includes(contestantID)) {
+    logger.error('Contestant already removed from this election');
+    throw new APIError('Contestant already removed from this election', StatusCodes.BAD_REQUEST);
   }
+
+  // remove contestant from election
+  election.contestants = election.contestants.filter(contestant => contestant != contestantID);
+  await election.save();
 
   // remove contestant's election if still a participant
   if (contestant.election == id) {
-    delete contestant.election;
+    contestant.set('election', undefined);
     await contestant.save();
   }
 

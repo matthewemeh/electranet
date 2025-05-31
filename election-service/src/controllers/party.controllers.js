@@ -87,7 +87,7 @@ const getParties = async (req, res) => {
   logger.info('Get Parties endpoint called');
 
   // validate request query
-  const { error } = validateGetParties(req.query);
+  const { error, value } = validateGetParties(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
@@ -96,11 +96,26 @@ const getParties = async (req, res) => {
   let parties, partiesKey;
 
   // check if request is for pagination
-  let { page, limit } = req.query;
-  if (page || limit) {
-    page = Number(page ?? 1);
-    limit = Number(limit ?? 10);
+  const { page, limit } = value;
+  if (page && !limit) {
+    logger.warn(
+      '"limit" is required when "page" is provided. Both "page" and "limit" must be specified for pagination.'
+    );
+    throw new APIError(
+      '"limit" is required when "page" is provided. Both "page" and "limit" must be specified for pagination.',
+      StatusCodes.BAD_REQUEST
+    );
+  } else if (limit && !page) {
+    logger.warn(
+      '"page" is required when "limit" is provided. Both "page" and "limit" must be specified for pagination.'
+    );
+    throw new APIError(
+      '"page" is required when "limit" is provided. Both "page" and "limit" must be specified for pagination.',
+      StatusCodes.BAD_REQUEST
+    );
+  }
 
+  if (page && limit) {
     // check cached paginated parties
     partiesKey = getPartiesKey(page, limit);
     parties = await req.redisClient.get(partiesKey);
@@ -126,6 +141,7 @@ const getParties = async (req, res) => {
   }
 
   // pagination isn't required here
+  // probably being used to fill a dropdown
 
   // check cached parties
   partiesKey = getPartiesKey();
@@ -138,7 +154,7 @@ const getParties = async (req, res) => {
   }
 
   // fallback to DB
-  parties = await Party.find({}).sort({ longName: 1 });
+  parties = await Party.find({}).select('shortName longName logoUrl -_id').sort({ longName: 1 });
 
   // cache parties
   await req.redisClient.setex(partiesKey, redisCacheExpiry, JSON.stringify(parties));

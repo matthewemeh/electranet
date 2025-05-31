@@ -99,7 +99,7 @@ const registerAdmin = async (req, res) => {
     logger.warn('Super Admin must be registered');
     throw new APIError('Super Admin must be registered', StatusCodes.INTERNAL_SERVER_ERROR);
   } else if (role === ROLES.SUPER_ADMIN && email !== process.env.SUPER_ADMIN_EMAIL) {
-    // check that the registrant's email matches the expected super admin email
+    // check that the registrant's email matches the expected super admin email if the user is registering as a super admin
     logger.error('You are not the Super Admin. Please contact developer');
     throw new APIError(
       'You are not the Super Admin. Please contact developer',
