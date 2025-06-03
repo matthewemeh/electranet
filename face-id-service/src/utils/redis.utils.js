@@ -12,9 +12,9 @@ const getUserKey = (...values) => `user:${values.join(':')}`;
 
 /**
  * @param {Array<string | number>} values unique values to be used in key. The order of the arguments affects the key!!!
- * @returns {string} face-id token key in a standard pattern
+ * @returns {string} face-id key in a standard pattern
  */
-const getFaceIdTokenKey = (...values) => `face-id-token:${values.join(':')}`;
+const getFaceIdKey = (...values) => `face-id:${values.join(':')}`;
 
 /**
  * This function checks Redis cache before checking the database for requested object
@@ -55,6 +55,7 @@ const deleteCacheKey = async (cacheKey, redisClient) => {
 module.exports = {
   fetchData,
   getUserKey,
+  getFaceIdKey,
   deleteCacheKey,
   redisCacheExpiry,
   getFaceIdTokenKey,

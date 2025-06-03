@@ -16,15 +16,13 @@ const getLogs = async (req, res) => {
   logger.info('Get logs endpoint called');
 
   // validate request query
-  const { error } = validateGetLogs(req.query);
+  const { error, value } = validateGetLogs(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { startTime, endTime } = req.query;
-  const page = Number(req.query.page ?? 1);
-  const limit = Number(req.query.limit ?? 10);
+  const { page, limit, startTime, endTime } = value;
 
   // check cache for logs
   const logsCacheKey = getLogsKey(page, limit, startTime, endTime);
@@ -41,17 +39,18 @@ const getLogs = async (req, res) => {
   // fallback to DB
   const paginationFilters = { $and: [] };
   if (startTime) {
-    paginationFilters.$and.push({ createdAt: { $gte: new Date(startTime) } });
+    paginationFilters.$and.push({ createdAt: { $gte: startTime } });
   }
   if (endTime) {
-    paginationFilters.$and.push({ createdAt: { $lte: new Date(endTime) } });
+    paginationFilters.$and.push({ createdAt: { $lte: endTime } });
   }
 
   paginatedLogs = await Log.paginate(paginationFilters, {
     page,
     limit,
-    populate: 'user',
     sort: { createdAt: -1 },
+    select: '-updatedAt -__v',
+    populate: { path: 'user', select: 'firstName lastName email.value' },
   });
 
   // cache fetched logs

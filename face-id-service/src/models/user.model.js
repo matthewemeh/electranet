@@ -39,5 +39,10 @@ UserSchema.index(
   { unique: true, partialFilterExpression: { vin: { $exists: true, $gt: '' } } }
 );
 
+// prevents fields from being stripped
+UserSchema.methods.toRaw = function () {
+  return this.toObject({ transform: false });
+};
+
 const User = model('User', UserSchema);
 module.exports = User;

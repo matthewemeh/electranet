@@ -6,8 +6,8 @@ const { Redis } = require('ioredis');
 const { connect } = require('mongoose');
 const { StatusCodes } = require('http-status-codes');
 
+const logRoutes = require('./routes/log.routes');
 const { logger } = require('./utils/logger.utils');
-const logRoutes = require('./routes/notification.routes');
 const { configureCors } = require('./config/cors.config');
 const { useRedis } = require('./middlewares/redis.middlewares');
 const notificationRoutes = require('./routes/notification.routes');
@@ -39,7 +39,7 @@ app.use(requestLogger);
 // DDoS protection and rate limiting
 app.use(configureRatelimitRedis(redisClient));
 
-app.use(configureRatelimit);
+app.use(configureRatelimit(redisClient));
 
 // Routes
 app.get('/health', (req, res) => {
@@ -65,5 +65,5 @@ app.listen(PORT, () => {
 
 // unhandled promise rejection
 process.on('unhandledRejection', (reason, promise) => {
-  logger.error('Unhandled rejection at', promise, 'reason:', reason);
+  logger.error('Unhandled rejection at', { promise, reason });
 });

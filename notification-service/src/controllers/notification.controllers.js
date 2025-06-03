@@ -16,16 +16,14 @@ const getNotifications = async (req, res) => {
   logger.info('Get notifications endpoint called');
 
   // validate request query
-  const { error } = validateGetNotifications(req.query);
+  const { error, value } = validateGetNotifications(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { user } = req;
-  const { startTime, endTime } = req.query;
-  const page = Number(req.query.page ?? 1);
-  const limit = Number(req.query.limit ?? 10);
+  const { page, limit, startTime, endTime } = value;
 
   // check cache for notifications
   const notificationsCacheKey = getNotificationsKey(page, limit, startTime, endTime);
@@ -42,16 +40,17 @@ const getNotifications = async (req, res) => {
   // fallback to DB
   const paginationFilters = { $and: [{ user: user._id }] };
   if (startTime) {
-    paginationFilters.$and.push({ createdAt: { $gte: new Date(startTime) } });
+    paginationFilters.$and.push({ createdAt: { $gte: startTime } });
   }
   if (endTime) {
-    paginationFilters.$and.push({ createdAt: { $lte: new Date(endTime) } });
+    paginationFilters.$and.push({ createdAt: { $lte: endTime } });
   }
 
   paginatedNotifications = await Notification.paginate(paginationFilters, {
     page,
     limit,
     sort: { createdAt: -1 },
+    select: '-user -updatedAt -__v',
   });
 
   // cache fetched notifications

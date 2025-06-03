@@ -166,7 +166,7 @@ app.use('/v1/notifications', validateApiKey, notificationServiceProxy);
 
 // setting up proxy for Face ID services
 app.use(
-  '/v1/face-id',
+  '/v1/face-id/register',
   validateApiKey,
   proxy(FACE_ID_SERVICE_URL, {
     ...proxyOptions,
@@ -181,6 +181,20 @@ app.use(
     },
   })
 );
+
+const faceIdServiceProxy = proxy(FACE_ID_SERVICE_URL, {
+  ...proxyOptions,
+  proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+    proxyReqOpts.headers['Content-Type'] = 'application/json';
+    proxyReqOpts.headers['x-auth-key'] = FACE_ID_SERVICE_AUTH_KEY;
+    return proxyReqOpts;
+  },
+  userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+    logger.info(`Response received from Face ID service: ${proxyRes.statusCode}`);
+    return proxyResData;
+  },
+});
+app.use('/v1/face-id', validateApiKey, faceIdServiceProxy);
 
 // handle method not allowed for each route
 app.use(methodNotAllowed);

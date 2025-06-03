@@ -1,15 +1,15 @@
-const { hash } = require('argon2');
 const express = require('express');
 const { Redis } = require('ioredis');
-const FormData = require('form-data');
-const { v4: uuidv4 } = require('uuid');
 const { StatusCodes } = require('http-status-codes');
 
+const supabase = require('../services/supabase');
+const { USER_IMAGE_KEY } = require('../constants');
 const { logger } = require('../utils/logger.utils');
-const { faceApi } = require('../services/facial-data.services');
-const { USER_ID_KEY, USER_IMAGE_KEY } = require('../constants');
+const { getUserFaceImageKey } = require('../utils/face-id.utils');
 const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
-const { getFaceIdTokenKey, redisCacheExpiry } = require('../utils/redis.utils');
+const { getUserKey, getFaceIdKey, redisCacheExpiry } = require('../utils/redis.utils');
+
+const { SUPABASE_BUCKET_NAME } = process.env;
 
 /**
  * register user's facial data on remote service
@@ -20,7 +20,7 @@ const registerFace = async (req, res) => {
   logger.info('Facial Data Registration endpoint called');
 
   const { user } = req;
-  const image = req.files?.find(({ fieldname }) => fieldname === USER_IMAGE_KEY)?.buffer;
+  const image = req.files?.find(({ fieldname }) => fieldname === USER_IMAGE_KEY);
 
   // validate the request body
   if (!image) {
@@ -33,25 +33,30 @@ const registerFace = async (req, res) => {
     );
   }
 
-  // setup multipart form data payload
-  const formData = new FormData();
-  formData.append(USER_ID_KEY, user._id.toString());
-  formData.append(USER_IMAGE_KEY, image, { filename: `${uuidv4()}.png`, contentType: 'image/png' });
+  const filePath = getUserFaceImageKey(user._id);
 
-  // proceed to upload user facial data
-  const response = await faceApi
-    .post('/register', formData, { headers: formData.getHeaders() })
-    .catch(error => ({ error }));
+  // Upload to Supabase Storage
+  const { error } = await supabase.storage
+    .from(SUPABASE_BUCKET_NAME)
+    .upload(filePath, image.buffer, {
+      contentType: image.mimetype,
+      cacheControl: '3600',
+      upsert: true,
+    });
 
-  if (response.error) {
-    const { status, data } = response.error.response;
-    logger.error('An error has occurred');
-    throw new APIError('An error has occurred', status, data);
+  if (error) {
+    throw error;
   }
 
   // user now has facial data registered
-  user.faceID = true;
-  await user.save();
+  if (!user.faceID) {
+    user.faceID = true;
+    await user.save();
+
+    // update cached user data
+    const userCacheKey = getUserKey(user.email.value);
+    await req.redisClient.setex(userCacheKey, redisCacheExpiry, JSON.stringify(user.toRaw()));
+  }
 
   logger.info('User facial data registered successfully');
   res
@@ -60,68 +65,47 @@ const registerFace = async (req, res) => {
 };
 
 /**
- * verify user's facial data
+ * fetch user's face ID
  * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
  */
-const verifyFace = async (req, res) => {
-  logger.info('Face Verification endpoint called');
+const fetchUserFaceID = async (req, res) => {
+  logger.info('Face ID Fetch endpoint called');
 
   const { user } = req;
-  const image = req.files?.find(({ fieldname }) => fieldname === USER_IMAGE_KEY)?.buffer;
+  const filePath = getUserFaceImageKey(user._id);
 
   if (!user.faceID) {
-    logger.error('User has not registered Face ID', StatusCodes.FORBIDDEN);
-    throw new APIError('User has not registered Face ID', StatusCodes.FORBIDDEN);
+    logger.error('User has not registered Face ID');
+    throw new APIError('User has not registered Face ID', StatusCodes.BAD_REQUEST);
   }
 
-  // validate the request body
-  if (!image) {
-    logger.warn('Validation error', {
-      message: `"${USER_IMAGE_KEY}" is missing in Multipart form data`,
+  const faceIdKey = getFaceIdKey(user._id);
+  const cachedFaceId = await req.redisClient.get(faceIdKey);
+  if (cachedFaceId) {
+    logger.info('Face ID fetched successfully from cache');
+    return res.status(StatusCodes.OK).json({
+      success: true,
+      data: JSON.parse(cachedFaceId),
+      message: 'Face ID fetched successfully',
     });
-    throw new APIError(
-      `"${USER_IMAGE_KEY}" is missing in Multipart form data`,
-      StatusCodes.BAD_REQUEST
-    );
   }
 
-  // setup multipart form data payload
-  const formData = new FormData();
-  formData.append(USER_ID_KEY, user._id.toString());
-  formData.append(USER_IMAGE_KEY, image, { filename: `${uuidv4()}.png`, contentType: 'image/png' });
+  const { data, error } = await supabase.storage
+    .from(SUPABASE_BUCKET_NAME)
+    .createSignedUrl(filePath, redisCacheExpiry);
 
-  // proceed to verify user facial data
-  const response = await faceApi
-    .post('/verify', formData, { headers: formData.getHeaders() })
-    .catch(error => ({ error }));
-
-  if (response.error) {
-    const { status, data } = response.error.response;
-    logger.error('An error has occurred');
-    throw new APIError('An error has occurred', status, data);
+  if (error) {
+    throw error;
   }
 
-  // check if face verification failed
-  const { status, confidence } = response.data.message;
-  if (!status || confidence < 90) {
-    logger.error('Face verification failed');
-    throw new APIError('Face verification failed', StatusCodes.UNAUTHORIZED);
-  }
+  await req.redisClient.setex(faceIdKey, redisCacheExpiry, JSON.stringify(data));
 
-  // generate and store a face id token for the verified face id
-  const faceIdToken = uuidv4();
-  const hashedFaceIdToken = await hash(faceIdToken);
-  const faceIdTokenKey = getFaceIdTokenKey(user.email.value);
-  await req.redisClient.setex(faceIdTokenKey, redisCacheExpiry, hashedFaceIdToken);
-
-  logger.info('Face verified successfully');
-  res
-    .status(StatusCodes.OK)
-    .json({ success: true, message: 'Face verified successfully', data: { faceIdToken } });
+  logger.info('Face ID fetched successfully');
+  res.status(StatusCodes.OK).json({ success: true, message: 'Face ID fetched successfully', data });
 };
 
 module.exports = {
-  verifyFace: asyncHandler(verifyFace),
   registerFace: asyncHandler(registerFace),
+  fetchUserFaceID: asyncHandler(fetchUserFaceID),
 };

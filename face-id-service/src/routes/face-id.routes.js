@@ -1,10 +1,11 @@
 const multer = require('multer');
 const router = require('express').Router();
 
-const { registerFace, verifyFace } = require('../controllers/face-id.controllers');
+const { registerFace, fetchUserFaceID } = require('../controllers/face-id.controllers');
 const { validateAuthKey, verifyToken, verifyUser } = require('../middlewares/auth.middlewares');
 
-const upload = multer();
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 
 router.use(validateAuthKey);
 
@@ -12,10 +13,8 @@ router.use(verifyToken);
 
 router.use(verifyUser);
 
-router.use(upload.any());
+router.get('/fetch', fetchUserFaceID);
 
-router.post('/verify', verifyFace);
-
-router.post('/register', registerFace);
+router.post('/register', upload.any(), registerFace);
 
 module.exports = router;
