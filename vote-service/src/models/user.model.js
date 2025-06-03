@@ -49,7 +49,7 @@ UserSchema.virtual('fullName').get(function () {
  * @returns {boolean}
  */
 UserSchema.methods.hasVoted = function (electionID) {
-  const electionsVoted = new Set(this.electionsVoted);
+  const electionsVoted = new Set(this.electionsVoted.map(String));
   return electionsVoted.has(electionID);
 };
 

@@ -22,11 +22,15 @@ const VoteSchema = new Schema(
     timestamp: { type: Number, required: true, immutable: true },
     previousHash: { type: String, default: '', immutable: true },
     index: { type: Number, required: true, min: 0, immutable: true },
+    election: { type: Schema.Types.ObjectId, ref: 'Election', required: true },
   },
   { minimize: false, collection: 'votes' }
 );
 VoteSchema.plugin(mongoosePaginate);
-VoteSchema.plugin(encryption, { secret: process.env.MONGO_DB_SECRET });
+VoteSchema.plugin(encryption, {
+  secret: process.env.MONGO_DB_SECRET,
+  excludeFromEncryption: ['election'],
+});
 
 /**
  * Checks if user's vote is still valid by checking if vote has been tampered with
@@ -38,7 +42,9 @@ VoteSchema.methods.isValid = function (previousVote) {
     this.index + this.previousHash + this.timestamp + JSON.stringify(this.data)
   ).toString();
 
-  if (this.hash !== voteHash) {
+  if (!this.election.equals(this.data.election)) {
+    return false;
+  } else if (this.hash !== voteHash) {
     return false;
   } else if (previousVote && previousVote.hash !== this.previousHash) {
     return false;
@@ -49,11 +55,11 @@ VoteSchema.methods.isValid = function (previousVote) {
 /* Before returning json response to client, remove sensitive fields */
 VoteSchema.methods.toJSON = function () {
   const vote = this.toObject();
+  delete vote.data;
   delete vote.index;
+  delete vote.election;
   delete vote.isTailNode;
   delete vote.previousHash;
-  delete vote.data.party;
-  delete vote.data.contestants;
   return vote;
 };
 

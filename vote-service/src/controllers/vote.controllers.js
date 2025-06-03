@@ -10,14 +10,16 @@ const Result = require('../models/result.model');
 const { logger } = require('../utils/logger.utils');
 const Election = require('../models/election.model');
 const { sendEmail } = require('../utils/email.utils');
+const Contestant = require('../models/contestant.model');
 const { sendNotification } = require('../utils/notification.utils');
 const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
-const { getUserKey, redisCacheExpiry, getVoteVerifyKey } = require('../utils/redis.utils');
+const { validateGetVotes, validateVerifyUserVote } = require('../utils/validation.utils');
 const {
-  validateCastVote,
-  validateGetVotes,
-  validateVerifyUserVote,
-} = require('../utils/validation.utils');
+  getUserKey,
+  getVotesKey,
+  getVoteVerifyKey,
+  redisCacheExpiry,
+} = require('../utils/redis.utils');
 
 /**
  * @param {express.Request & {redisClient: Redis}} req
@@ -26,15 +28,21 @@ const {
 const castVote = async (req, res) => {
   logger.info('Cast Vote endpoint called');
 
-  // validate request body
-  const { error } = validateCastVote(req.body);
-  if (error) {
-    logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
+  const { election, user } = req;
+  const { electionID, partyID } = req.body;
+
+  // check if there are any contestants under that party and election
+  let contestants = await Contestant.find({ party: partyID, election: electionID }).select('_id');
+  if (contestants.length === 0) {
+    logger.error('No contestant found for the specified party and election');
+    throw new APIError(
+      'No contestant found for the specified party and election',
+      StatusCodes.BAD_REQUEST
+    );
   }
 
-  const { election, user } = req;
-  const { electionID, partyID, contestants } = req.body;
+  // Convert contestants to an array of IDs
+  contestants = contestants.map(c => c._id);
 
   // create or update results. This whole process is to avoid race conditions
   const session = await mongoose.startSession();
@@ -43,9 +51,9 @@ const castVote = async (req, res) => {
 
     // Find or create the Result document for the election
     let resultDoc = await Result.findOne({ election: electionID }).session(session);
-
     if (!resultDoc) {
-      resultDoc = await Result.create({ results: [], election: electionID }, { session });
+      resultDoc = new Result({ election: electionID });
+      await resultDoc.save({ session });
     }
 
     // Check if the party already has a result entry
@@ -55,7 +63,7 @@ const castVote = async (req, res) => {
       // Party not found – add a new result entry
       await Result.updateOne(
         { _id: resultDoc._id },
-        { $push: { results: { party: partyID, contestants, votes: 1 } } },
+        { $push: { results: { contestants, party: partyID, votes: 1 } } },
         { session }
       );
     } else {
@@ -94,6 +102,7 @@ const castVote = async (req, res) => {
     hash: '',
     previousHash: '',
     isTailNode: true,
+    election: electionID,
     timestamp: Date.now(),
     data: { party: partyID, election: electionID, contestants },
   };
@@ -144,10 +153,10 @@ const castVote = async (req, res) => {
     `
   );
 
-  logger.info('Voted casted successfully');
+  logger.info('Voted cast successfully');
   res
     .status(StatusCodes.OK)
-    .json({ success: true, data: { voteID: vote._id }, message: 'Voted casted successfully' });
+    .json({ success: true, data: { voteID: vote._id }, message: 'Voted cast successfully' });
 };
 
 /**
@@ -168,7 +177,7 @@ const verifyUserVote = async (req, res) => {
 
   // check cached verified vote result
   const voteVerifyKey = getVoteVerifyKey(voteID);
-  const result = await req.redisClient.get(voteVerifyKey);
+  let result = await req.redisClient.get(voteVerifyKey);
   if (result) {
     logger.info('Vote checked successfully');
     return res
@@ -189,11 +198,11 @@ const verifyUserVote = async (req, res) => {
     'data.election': vote.data.election,
   });
 
-  const election = await Election.findById(vote.data.election);
+  const election = await Election.findById(vote.data.election).select('-_id name delimitationCode');
   result = {
     election,
     status: 'failed',
-    vote: { timestamp: vote.timestamp, hash: vote.hash },
+    voteTimestamp: vote.timestamp,
     message: 'Vote verification failed. Vote compromised!',
   };
 
@@ -220,21 +229,35 @@ const getVotes = async (req, res) => {
   logger.info('Get Votes endpoint called');
 
   // validate request query
-  const { error } = validateGetVotes(req.query);
+  const { error, value } = validateGetVotes(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { id } = req.params;
-  const page = Number(req.query.page ?? 1);
-  const limit = Number(req.query.limit ?? 10);
+  const { page, limit } = value;
 
-  const queryFields = {};
-  if (id) {
-    queryFields['data.election'] = id;
+  // check for cached votes
+  const votesKey = getVotesKey(id, page, limit);
+  let paginatedVotes = await req.redisClient.get(votesKey);
+  if (paginatedVotes) {
+    logger.info('Votes fetched successfully from cache');
+    return res.status(StatusCodes.OK).json({
+      success: true,
+      data: JSON.parse(paginatedVotes),
+      message: 'Votes fetched successfully',
+    });
   }
-  const paginatedVotes = await Vote.paginate(queryFields, { page, limit, sort: { timestamp: -1 } });
+
+  // fallback to DB
+  paginatedVotes = await Vote.paginate(
+    { election: id },
+    { page, limit, select: '-__v', sort: { timestamp: -1 } }
+  );
+
+  // cache the fetched votes
+  await req.redisClient.setex(votesKey, redisCacheExpiry, JSON.stringify(paginatedVotes));
 
   logger.info('Votes fetched successfully');
   res

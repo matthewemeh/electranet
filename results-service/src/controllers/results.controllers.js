@@ -2,6 +2,9 @@ const express = require('express');
 const { Redis } = require('ioredis');
 const { StatusCodes } = require('http-status-codes');
 
+require('../models/party.model');
+require('../models/election.model');
+require('../models/contestant.model');
 const Result = require('../models/result.model');
 const { logger } = require('../utils/logger.utils');
 const { asyncHandler } = require('../middlewares/error.middlewares');
@@ -27,7 +30,13 @@ const getResults = async (req, res) => {
   }
 
   // fallback to DB
-  results = await Result.findOne({ election: id });
+  results = await Result.findOne({ election: id })
+    .select('-_id -__v')
+    .populate([
+      { path: 'election', select: 'name delimitationCode -_id' },
+      { path: 'results.party', select: 'longName shortName logoUrl -_id' },
+      { path: 'results.contestants', select: 'firstName lastName profileImageUrl -_id' },
+    ]);
 
   // cache fetched results
   await req.redisClient.setex(resultKey, redisCacheExpiry, JSON.stringify(results));

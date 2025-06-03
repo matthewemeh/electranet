@@ -4,7 +4,6 @@ const validateCastVote = data => {
   const schema = Joi.object({
     partyID: Joi.string().required(),
     electionID: Joi.string().required(),
-    contestants: Joi.array().required(),
   });
 
   return schema.validate(data);

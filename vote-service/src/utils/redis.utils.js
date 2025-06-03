@@ -12,15 +12,15 @@ const getUserKey = (...values) => `user:${values.join(':')}`;
 
 /**
  * @param {Array<string | number>} values unique values to be used in key. The order of the arguments affects the key!!!
- * @returns {string} face-id token key in a standard pattern
- */
-const getFaceIdTokenKey = (...values) => `face-id-token:${values.join(':')}`;
-
-/**
- * @param {Array<string | number>} values unique values to be used in key. The order of the arguments affects the key!!!
  * @returns {string} vote verify token key in a standard pattern
  */
 const getVoteVerifyKey = (...values) => `vote-verify:${values.join(':')}`;
+
+/**
+ * @param {Array<string | number>} values unique values to be used in key. The order of the arguments affects the key!!!
+ * @returns {string} votes key in a standard pattern
+ */
+const getVotesKey = (...values) => `votes:${values.join(':')}`;
 
 /**
  * This function checks Redis cache before checking the database for requested object
@@ -61,8 +61,8 @@ const deleteCacheKey = async (cacheKey, redisClient) => {
 module.exports = {
   fetchData,
   getUserKey,
+  getVotesKey,
   deleteCacheKey,
   getVoteVerifyKey,
   redisCacheExpiry,
-  getFaceIdTokenKey,
 };

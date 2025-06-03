@@ -1,13 +1,12 @@
 const express = require('express');
-const { verify } = require('argon2');
 const { Redis } = require('ioredis');
 const { StatusCodes } = require('http-status-codes');
 
 const Party = require('../models/party.model');
 const { logger } = require('../utils/logger.utils');
 const Election = require('../models/election.model');
+const { validateCastVote } = require('../utils/validation.utils');
 const { APIError, asyncHandler } = require('./error.middlewares');
-const { getFaceIdTokenKey, deleteCacheKey } = require('../utils/redis.utils');
 
 /**
  * @param {express.Request & {redisClient: Redis}} req
@@ -16,7 +15,15 @@ const { getFaceIdTokenKey, deleteCacheKey } = require('../utils/redis.utils');
  */
 const verifyVote = async (req, res, next) => {
   const { user } = req;
-  const { electionID, partyID, faceIdToken } = req.body;
+
+  // validate request body
+  const { error } = validateCastVote(req.body);
+  if (error) {
+    logger.warn('Validation error', { message: error.details[0].message });
+    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
+  }
+
+  const { electionID, partyID } = req.body;
 
   // check if election exists
   const election = await Election.findById(electionID);
@@ -43,22 +50,6 @@ const verifyVote = async (req, res, next) => {
   if (user.hasVoted(electionID)) {
     throw new APIError('You have voted for this election already!', StatusCodes.BAD_REQUEST);
   }
-
-  // check if user has verified face id
-  const faceIdTokenKey = getFaceIdTokenKey(user.email.value);
-  const hashedFaceIdToken = await req.redisClient.get(faceIdTokenKey);
-  if (!hashedFaceIdToken) {
-    logger.error('Face ID token has expired!');
-    throw new APIError('Face ID token has expired!', StatusCodes.GONE);
-  }
-  const tokenMatches = await verify(hashedFaceIdToken, faceIdToken);
-  if (!tokenMatches) {
-    logger.error('Invalid Face ID token!');
-    throw new APIError('Invalid Face ID token!', StatusCodes.FORBIDDEN);
-  }
-
-  // invalidate face id token cache
-  await deleteCacheKey(faceIdTokenKey, req.redisClient);
 
   // check if party exists
   const partyExists = await Party.findById(partyID);
