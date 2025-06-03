@@ -58,5 +58,4 @@ module.exports = {
   getFaceIdKey,
   deleteCacheKey,
   redisCacheExpiry,
-  getFaceIdTokenKey,
 };
