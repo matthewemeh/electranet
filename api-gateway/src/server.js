@@ -96,6 +96,23 @@ app.use('/v1/auth', validateApiKey, identityServiceProxy);
 app.use('/v1/users', validateApiKey, identityServiceProxy);
 
 // setting up proxy for election services
+const electionServiceMultipartProxy = proxy(ELECTION_SERVICE_URL, {
+  ...proxyOptions,
+  parseReqBody: false,
+  proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
+    proxyReqOpts.headers['x-auth-key'] = ELECTION_SERVICE_AUTH_KEY;
+    return proxyReqOpts;
+  },
+  userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
+    logger.info(`Response received from Election service: ${proxyRes.statusCode}`);
+    return proxyResData;
+  },
+});
+app.use('/v1/parties/add', validateApiKey, electionServiceMultipartProxy);
+app.use('/v1/parties/edit', validateApiKey, electionServiceMultipartProxy);
+app.use('/v1/contestants/add', validateApiKey, electionServiceMultipartProxy);
+app.use('/v1/contestants/edit', validateApiKey, electionServiceMultipartProxy);
+
 const electionServiceProxy = proxy(ELECTION_SERVICE_URL, {
   ...proxyOptions,
   proxyReqOptDecorator: (proxyReqOpts, srcReq) => {

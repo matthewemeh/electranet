@@ -4,7 +4,10 @@ const { StatusCodes } = require('http-status-codes');
 
 const Log = require('../models/log.model');
 const Party = require('../models/party.model');
+const supabase = require('../services/supabase');
+const { PARTY_IMAGE_KEY } = require('../constants');
 const { logger } = require('../utils/logger.utils');
+const { getPartyImageKey } = require('../utils/party.utils');
 const { redisCacheExpiry, getPartiesKey } = require('../utils/redis.utils');
 const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
 const {
@@ -13,6 +16,8 @@ const {
   validatePartyUpdate,
 } = require('../utils/validation.utils');
 
+const { SUPABASE_BUCKET_NAME } = process.env;
+
 /**
  * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
@@ -20,15 +25,46 @@ const {
 const addParty = async (req, res) => {
   logger.info('Add Party endpoint called');
 
-  // validate request body
+  // validate request body and files
   const { error } = validateParty(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  // proceed to create party
-  const party = await Party.create(req.body);
+  const partyImage = req.files?.find(({ fieldname }) => fieldname === PARTY_IMAGE_KEY);
+  if (!partyImage) {
+    logger.warn('Validation error', {
+      message: `"${PARTY_IMAGE_KEY}" is missing in Multipart form data`,
+    });
+    throw new APIError(
+      `"${PARTY_IMAGE_KEY}" is missing in Multipart form data`,
+      StatusCodes.BAD_REQUEST
+    );
+  }
+
+  const party = new Party(req.body);
+
+  // Upload to Supabase Storage
+  const filePath = getPartyImageKey(party._id);
+  const { error: supabaseError } = await supabase.storage
+    .from(SUPABASE_BUCKET_NAME)
+    .upload(filePath, partyImage.buffer, {
+      contentType: partyImage.mimetype,
+      cacheControl: '3600',
+    });
+
+  if (supabaseError) {
+    throw supabaseError;
+  }
+
+  // Get Public URL
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(SUPABASE_BUCKET_NAME).getPublicUrl(filePath);
+
+  party.logoUrl = publicUrl;
+  await party.save();
 
   // create event log
   await Log.create({
@@ -51,7 +87,8 @@ const updateParty = async (req, res) => {
   logger.info('Edit Party endpoint called');
 
   // validate request body
-  const { error } = validatePartyUpdate(req.body);
+  const payload = req.body ?? {};
+  const { error } = validatePartyUpdate(payload);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
@@ -59,12 +96,45 @@ const updateParty = async (req, res) => {
 
   const { id } = req.params;
 
-  // proceed to update party
-  const party = await Party.findByIdAndUpdate(id, req.body);
+  // check if party exists
+  const party = await Party.findById(id);
   if (!party) {
     logger.error('Party not found');
     throw new APIError('Party not found', StatusCodes.NOT_FOUND);
   }
+
+  // update non-file fields
+  Object.assign(party, payload);
+
+  // check if party image is provided
+  // if provided, upload to Supabase Storage and update party logoUrl
+  const partyImage = req.files?.find(({ fieldname }) => fieldname === PARTY_IMAGE_KEY);
+  if (partyImage) {
+    // Upload to Supabase Storage
+    const filePath = getPartyImageKey(party._id);
+    const { error: supabaseError } = await supabase.storage
+      .from(SUPABASE_BUCKET_NAME)
+      .upload(filePath, partyImage.buffer, {
+        contentType: partyImage.mimetype,
+        cacheControl: '3600',
+        upsert: true,
+      });
+
+    if (supabaseError) {
+      throw supabaseError;
+    }
+
+    // Get Public URL
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from(SUPABASE_BUCKET_NAME).getPublicUrl(filePath);
+
+    // Since the image is updated with same file path, we need to invalidate the cache via cache busting
+    party.logoUrl = `${publicUrl}?cb=${Date.now()}`;
+  }
+
+  // proceed to update party
+  await party.save();
 
   // create event log
   await Log.create({

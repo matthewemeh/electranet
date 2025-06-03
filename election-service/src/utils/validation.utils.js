@@ -37,7 +37,6 @@ const validateElectionContestant = data => {
 const validateContestant = data => {
   const schema = Joi.object({
     party: Joi.string(),
-    profileImageUrl: Joi.string().required(),
     middleName: Joi.string().trim().min(2).max(64),
     stateOfOrigin: Joi.string().trim().max(30).required(),
     gender: Joi.string().equal('MALE', 'FEMALE').required(),
@@ -51,7 +50,6 @@ const validateContestant = data => {
 const validateContestantUpdate = data => {
   const schema = Joi.object({
     party: Joi.string(),
-    profileImageUrl: Joi.string(),
     isDeleted: Joi.boolean().strict(),
     stateOfOrigin: Joi.string().trim().max(30),
     gender: Joi.string().equal('MALE', 'FEMALE'),
@@ -107,7 +105,6 @@ const validateGetUserElections = data => {
 const validateParty = data => {
   const schema = Joi.object({
     motto: Joi.string().max(256),
-    logoUrl: Joi.string().required(),
     shortName: Joi.string().trim().max(10).uppercase().required(),
     longName: Joi.string().trim().max(128).uppercase().required(),
   });
@@ -117,7 +114,6 @@ const validateParty = data => {
 
 const validatePartyUpdate = data => {
   const schema = Joi.object({
-    logoUrl: Joi.string(),
     motto: Joi.string().max(256),
     shortName: Joi.string().trim().max(10).uppercase(),
     longName: Joi.string().trim().max(128).uppercase(),

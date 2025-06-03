@@ -3,9 +3,12 @@ const { Redis } = require('ioredis');
 const { StatusCodes } = require('http-status-codes');
 
 const Log = require('../models/log.model');
+const supabase = require('../services/supabase');
 const { logger } = require('../utils/logger.utils');
 const Election = require('../models/election.model');
 const Contestant = require('../models/contestant.model');
+const { CONTESTANT_IMAGE_KEY } = require('../constants');
+const { getContestantImageKey } = require('../utils/party.utils');
 const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
 const {
   validateContestant,
@@ -19,6 +22,8 @@ const {
   getElectionContestantsKey,
 } = require('../utils/redis.utils');
 
+const { SUPABASE_BUCKET_NAME } = process.env;
+
 /**
  * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
@@ -26,15 +31,46 @@ const {
 const addContestant = async (req, res) => {
   logger.info('Add Contestant endpoint called');
 
-  // validate request body
+  // validate request body and files
   const { error } = validateContestant(req.body);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  // proceed to create contestant
-  const contestant = await Contestant.create(req.body);
+  const contestantImage = req.files?.find(({ fieldname }) => fieldname === CONTESTANT_IMAGE_KEY);
+  if (!contestantImage) {
+    logger.warn('Validation error', {
+      message: `"${CONTESTANT_IMAGE_KEY}" is missing in Multipart form data`,
+    });
+    throw new APIError(
+      `"${CONTESTANT_IMAGE_KEY}" is missing in Multipart form data`,
+      StatusCodes.BAD_REQUEST
+    );
+  }
+
+  const contestant = new Contestant(req.body);
+
+  // Upload to Supabase Storage
+  const filePath = getContestantImageKey(contestant._id);
+  const { error: supabaseError } = await supabase.storage
+    .from(SUPABASE_BUCKET_NAME)
+    .upload(filePath, contestantImage.buffer, {
+      contentType: contestantImage.mimetype,
+      cacheControl: '3600',
+    });
+
+  if (supabaseError) {
+    throw supabaseError;
+  }
+
+  // Get Public URL
+  const {
+    data: { publicUrl },
+  } = supabase.storage.from(SUPABASE_BUCKET_NAME).getPublicUrl(filePath);
+
+  contestant.profileImageUrl = publicUrl;
+  await contestant.save();
 
   // create an event log
   await Log.create({
@@ -57,19 +93,54 @@ const updateContestant = async (req, res) => {
   logger.info('Update Contestant endpoint called');
 
   // validate request body
-  const { error } = validateContestantUpdate(req.body);
+  const payload = req.body ?? {};
+  const { error } = validateContestantUpdate(payload);
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  // update the contestant
   const { id } = req.params;
-  const contestant = await Contestant.findByIdAndUpdate(id, req.body, { new: true });
+
+  // check if contestant exists
+  const contestant = await Contestant.findById(id);
   if (!contestant) {
     logger.error('Contestant not found');
     throw new APIError('Contestant not found', StatusCodes.NOT_FOUND);
   }
+
+  // update non-file fields
+  Object.assign(contestant, payload);
+
+  // check if contestant image is provided
+  // if provided, upload to Supabase Storage and update contestant profileImageUrl
+  const contestantImage = req.files?.find(({ fieldname }) => fieldname === CONTESTANT_IMAGE_KEY);
+  if (contestantImage) {
+    // Upload to Supabase Storage
+    const filePath = getContestantImageKey(contestant._id);
+    const { error: supabaseError } = await supabase.storage
+      .from(SUPABASE_BUCKET_NAME)
+      .upload(filePath, contestantImage.buffer, {
+        contentType: contestantImage.mimetype,
+        cacheControl: '3600',
+        upsert: true,
+      });
+
+    if (supabaseError) {
+      throw supabaseError;
+    }
+
+    // Get Public URL
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from(SUPABASE_BUCKET_NAME).getPublicUrl(filePath);
+
+    // Since the image is updated with same file path, we need to invalidate the cache via cache busting
+    contestant.profileImageUrl = `${publicUrl}?cb=${Date.now()}`;
+  }
+
+  // proceed to update contestant
+  await contestant.save();
 
   // clear election contestants cache
   const contestantsCacheKey = getElectionContestantsKey(contestant.election);

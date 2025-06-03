@@ -1,6 +1,6 @@
 module.exports = {
-  PAYLOAD_KEY: 'payload',
-  MEDIA_IMAGE_KEY: 'mediaImage',
+  PARTY_IMAGE_KEY: 'partyImage',
+  CONTESTANT_IMAGE_KEY: 'contestantImage',
   ADMIN_TOKEN_STATUSES: { REVOKED: 'REVOKED', ACTIVE: 'ACTIVE' },
   ROLES: { USER: 'USER', ADMIN: 'ADMIN', SUPER_ADMIN: 'SUPER_ADMIN' },
 };
