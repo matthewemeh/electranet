@@ -29,6 +29,7 @@ const {
   ELECTION_SERVICE_URL,
   IDENTITY_SERVICE_URL,
   VOTE_SERVICE_AUTH_KEY,
+  HEALTH_CHECK_RATE_LIMIT,
   NOTIFICATION_SERVICE_URL,
   RESULTS_SERVICE_AUTH_KEY,
   FACE_ID_SERVICE_AUTH_KEY,
@@ -48,6 +49,13 @@ app.use(configureCors());
 app.use(express.json({ limit: '1mb' }));
 app.use(requestLogger);
 
+const healthCheckRateLimit = Number(HEALTH_CHECK_RATE_LIMIT) || 190;
+const healthCheckRateLimiter = configureRatelimit(redisClient, healthCheckRateLimit);
+app.get('/health', healthCheckRateLimiter, (req, res) => {
+  logger.info('Health check successful');
+  res.sendStatus(StatusCodes.OK);
+});
+
 // IP-based rate limiting for sensitive endpoints
 app.use(configureRatelimit(redisClient));
 
@@ -66,11 +74,6 @@ const proxyOptions = {
     return proxyReqOpts;
   },
 };
-
-app.get('/health', (req, res) => {
-  logger.info('Health check successful');
-  res.sendStatus(StatusCodes.OK);
-});
 
 // serve the OpenAPI specification
 // app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerDocument));

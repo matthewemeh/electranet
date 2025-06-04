@@ -19,7 +19,7 @@ const { notFound, methodNotAllowed } = require('./middlewares/endpoint.middlewar
 
 const app = express();
 
-const { PORT, MONGO_URI, REDIS_URL } = process.env;
+const { PORT, MONGO_URI, REDIS_URL, HEALTH_CHECK_RATE_LIMIT } = process.env;
 
 // connect to MongoDB
 connect(MONGO_URI)
@@ -36,17 +36,19 @@ app.use(configureCors());
 app.use(express.json({ limit: '1mb' }));
 app.use(requestLogger);
 
+const healthCheckRateLimit = Number(HEALTH_CHECK_RATE_LIMIT) || 190;
+const healthCheckRateLimiter = configureRatelimit(redisClient, healthCheckRateLimit);
+app.get('/health', healthCheckRateLimiter, (req, res) => {
+  logger.info('Health check successful');
+  res.sendStatus(StatusCodes.OK);
+});
+
 // DDoS protection and rate limiting
 app.use(configureRatelimitRedis(redisClient));
 
 app.use(configureRatelimit(redisClient));
 
 // Routes
-app.get('/health', (req, res) => {
-  logger.info('Health check successful');
-  res.sendStatus(StatusCodes.OK);
-});
-
 app.use('/api/logs', useRedis(redisClient), logRoutes);
 app.use('/api/notifications', useRedis(redisClient), notificationRoutes);
 
