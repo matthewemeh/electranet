@@ -32,8 +32,8 @@ router.patch('/:id', updateElection);
 
 router.delete('/:id', deleteElection);
 
-router.post('/add-contestant/:id', addContestant);
+router.patch('/add-contestant/:id', addContestant);
 
-router.post('/remove-contestant/:id', removeContestant);
+router.patch('/remove-contestant/:id', removeContestant);
 
 module.exports = router;

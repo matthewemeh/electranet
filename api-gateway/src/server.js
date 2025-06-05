@@ -1,6 +1,6 @@
 require('dotenv').config();
 const hpp = require('hpp');
-const yaml = require('yamljs');
+const YAML = require('yamljs');
 const helmet = require('helmet');
 const express = require('express');
 const { Redis } = require('ioredis');
@@ -8,8 +8,8 @@ const proxy = require('express-http-proxy');
 const swaggerUI = require('swagger-ui-express');
 const { StatusCodes } = require('http-status-codes');
 
-// const swaggerDocument = require('./swagger.yaml');
 const { logger } = require('./utils/logger.utils');
+const swaggerDocument = YAML.load('./src/swagger.yaml');
 const { configureCors } = require('./config/cors.config');
 const { configureRatelimit } = require('./config/ratelimit.config');
 const { validateApiKey } = require('./middlewares/auth.middlewares');
@@ -75,8 +75,12 @@ const proxyOptions = {
   },
 };
 
+app.get('/', (req, res) => {
+  res.send('<h1>Electranet API</h1><a href="/api-docs">Documentation</a>');
+});
+
 // serve the OpenAPI specification
-// app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerDocument));
+app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerDocument));
 
 // apply middleware to accept only specific version requests
 app.use(urlVersioning('v1'));

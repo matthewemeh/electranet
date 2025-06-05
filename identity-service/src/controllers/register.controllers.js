@@ -103,7 +103,7 @@ const registerAdmin = async (req, res) => {
     logger.error('You are not the Super Admin. Please contact developer');
     throw new APIError(
       'You are not the Super Admin. Please contact developer',
-      StatusCodes.FORBIDDEN
+      StatusCodes.BAD_REQUEST
     );
   }
 
@@ -154,7 +154,7 @@ const verifyOtp = async (req, res) => {
   const isOtpValid = await verifyOTP(email, otp, req.redisClient);
   if (!isOtpValid) {
     logger.error('Invalid OTP!');
-    throw new APIError('Invalid OTP!', StatusCodes.FORBIDDEN);
+    throw new APIError('Invalid OTP!', StatusCodes.BAD_REQUEST);
   }
 
   // verify user email

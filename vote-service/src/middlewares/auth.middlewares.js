@@ -47,7 +47,7 @@ const verifyToken = async (req, res, next) => {
     decodedUser = verify(token, process.env.JWT_SECRET);
   } catch (error) {
     logger.error('Session expired', error);
-    throw new APIError('Session expired', StatusCodes.FORBIDDEN);
+    throw new APIError('Session expired', StatusCodes.UNAUTHORIZED);
   }
 
   const userCacheKey = getUserKey(decodedUser.email);

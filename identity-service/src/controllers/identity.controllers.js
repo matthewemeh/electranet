@@ -40,7 +40,7 @@ const login = async (req, res) => {
   const isValidPassword = await user.comparePassword(password);
   if (!isValidPassword) {
     logger.error('Invalid password');
-    throw new APIError('Invalid password', StatusCodes.BAD_REQUEST);
+    throw new APIError('Invalid password', StatusCodes.UNAUTHORIZED);
   }
 
   const tokens = await generateTokens(user);
@@ -70,7 +70,7 @@ const getRefreshToken = async (req, res) => {
   const token = await RefreshToken.findOne({ token: refreshToken }).populate('user');
   if (!token || token.expiresAt < Date.now()) {
     logger.error('Inavlid or expired refresh token');
-    throw new APIError('Inavlid or expired refresh token', StatusCodes.UNAUTHORIZED);
+    throw new APIError('Inavlid or expired refresh token', StatusCodes.BAD_REQUEST);
   }
 
   // check if user exists
@@ -108,7 +108,7 @@ const logout = async (req, res) => {
   const result = await RefreshToken.deleteOne({ token: refreshToken });
   if (!result.deletedCount) {
     logger.error('Invalid refresh token');
-    throw new APIError('Invalid refresh token', StatusCodes.FORBIDDEN);
+    throw new APIError('Invalid refresh token', StatusCodes.BAD_REQUEST);
   }
 
   logger.info('Logout successful');

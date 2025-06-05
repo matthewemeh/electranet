@@ -1,9 +1,2821 @@
-openapi: 3.0.0
+openapi: 3.0.4
 info:
   title: Electranet API
   version: 1.0.0
-  description: Electranet API (gateway) for managing requests to various services
+  description: This is the API documentation for Electranet, a platform for managing and monitoring a voting platform.
 servers:
-  - url: https://electranet.onrender.com/v1
-    description: Production server
+  - url: http://localhost:3000
+    description: Development server
+tags:
+  - name: identity-service
+    description: Operations related to user identity and authentication
+  - name: election-service
+    description: Operations related to managing elections, contestants and votes
+  - name: face-id-service
+    description: Operations related to face recognition and identity verification
+  - name: notification-service
+    description: Operations related to sending notifications to users and fetching activity logs (for admins)
+  - name: vote-service
+    description: Operations related to casting and verifying votes
+  - name: result-service
+    description: Operations related to fetching election results and statistics
 paths:
+  /v1/auth/register/user:
+    post:
+      tags:
+        - identity-service
+      summary: Register a new user
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/auth/register/admin:
+    post:
+      tags:
+        - identity-service
+      summary: Register a new admin
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Admin'
+      responses:
+        '201':
+          description: Admin registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body or Registrant is not the Super-Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '409':
+          description: Admin or Super-Admin already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '500':
+          description: Super-Admin has not registered yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/auth/register/verify:
+    post:
+      tags:
+        - identity-service
+      summary: Verify User or Admin registration via OTP
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyOTP'
+      responses:
+        '200':
+          description: Registration verified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body or Inavlid OTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User or Admin not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '410':
+          description: OTP expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/auth/forgot-password/initiate:
+    post:
+      tags:
+        - identity-service
+      summary: Initiate forgot password process
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ForgotPassword'
+      responses:
+        '200':
+          description: Forgot password initiated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/auth/forgot-password/verify:
+    post:
+      tags:
+        - identity-service
+      summary: Verify forgot password via OTP
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyOTP'
+      responses:
+        '200':
+          description: Forgot password verified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body or Inavlid OTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '410':
+          description: OTP expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/auth/forgot-password/reset:
+    post:
+      tags:
+        - identity-service
+      summary: Reset user password
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPassword'
+      responses:
+        '200':
+          description: Password reset successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '410':
+          description: Reset token expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/auth/login:
+    post:
+      tags:
+        - identity-service
+      summary: User or Admin login
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Invalid password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User or Admin not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/auth/logout:
+    post:
+      tags:
+        - identity-service
+      summary: User or Admin logout
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshToken'
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body or Invalid Refresh Token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/auth/refresh-token:
+    post:
+      tags:
+        - identity-service
+      summary: Get new refresh token
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshToken'
+      responses:
+        '200':
+          description: Token refresh successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body or Invalid Refresh Token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/otp/send:
+    post:
+      tags:
+        - identity-service
+      summary: Send OTP to a user
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendOTP'
+      responses:
+        '200':
+          description: OTP sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/users:
+    get:
+      tags:
+        - identity-service
+      summary: Get all users (force-paginated)
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 10
+            enum:
+              - 10
+              - 25
+              - 50
+        - name: email
+          in: query
+          required: false
+          schema:
+            type: string
+            format: string
+        - name: delimitationCode
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: firstName
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: lastName
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: role
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - ADMIN
+              - USER
+      responses:
+        '200':
+          description: Users fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request queries or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/users/invite:
+    post:
+      tags:
+        - identity-service
+      summary: Invite an Admin to assist in managing platform
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminInvite'
+      responses:
+        '200':
+          description: Invitation Sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body, User email not yet verified or Super-Admin is inviting self
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from user or admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User or Invitee not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '409':
+          description: Admin has already been invited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/users/tokens:
+    get:
+      tags:
+        - identity-service
+      summary: Get Admin Tokens (force-paginated)
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 10
+            enum:
+              - 10
+              - 25
+              - 50
+      responses:
+        '200':
+          description: Admin Tokens fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request queries or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from user or admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/users/tokens/{id}:
+    patch:
+      tags:
+        - identity-service
+      summary: Modify Admin Token properties (e.g status, token expiration)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModifyAdminToken'
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+        - name: id
+          in: path
+          description: Admin Token ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Admin rights modified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from user or admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User or Admin Token not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+
+  /v1/parties:
+    get:
+      tags:
+        - election-service
+      summary: Get Parties
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            enum:
+              - 10
+              - 25
+              - 50
+      responses:
+        '200':
+          description: Parties fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request queries or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/parties/add:
+    post:
+      tags:
+        - election-service
+      summary: Add a Party
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Party'
+                - required:
+                    - longName
+                    - shortName
+                    - partyImage
+      responses:
+        '200':
+          description: Party added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/parties/edit/{id}:
+    patch:
+      tags:
+        - election-service
+      summary: Edit a Party
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+        - name: id
+          in: path
+          description: Party ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Party'
+      responses:
+        '200':
+          description: Party updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User or Party not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/contestants/add:
+    post:
+      tags:
+        - election-service
+      summary: Add a Contestant
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Contestant'
+                - required:
+                    - gender
+                    - lastName
+                    - firstName
+                    - stateOfOrigin
+                    - contestantImage
+      responses:
+        '200':
+          description: Contestant added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/contestants/edit/{id}:
+    patch:
+      tags:
+        - election-service
+      summary: Edit a Contestant
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+        - name: id
+          in: path
+          description: Contestant ID
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Contestant'
+      responses:
+        '200':
+          description: Contestant updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User or Contestant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/contestants:
+    get:
+      tags:
+        - election-service
+      summary: Get Contestants (force-paginated)
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 10
+            enum:
+              - 10
+              - 25
+              - 50
+        - name: party
+          in: query
+          required: false
+          schema:
+            type: string
+            description: A Party's ID
+        - name: isDeleted
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: gender
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - MALE
+              - FEMALE
+        - name: firstName
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: lastName
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Parties fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request queries or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/contestants/{id}:
+    get:
+      tags:
+        - election-service
+      summary: Get all contestants in an election
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+        - name: id
+          in: path
+          description: Election ID
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Contestants fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request queries or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User or Contestant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/elections/get-user-elections:
+    get:
+      tags:
+        - election-service
+      summary: Get User Elections (force-paginated)
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 10
+            enum:
+              - 10
+              - 25
+              - 50
+        - name: startTime
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: endTime
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Elections fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request queries or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from Admin or Super-Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/elections:
+    get:
+      tags:
+        - election-service
+      summary: Get Elections (force-paginated)
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 10
+            enum:
+              - 10
+              - 25
+              - 50
+        - name: startTime
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: endTime
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: delimitationCode
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Elections fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request queries or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+    post:
+      tags:
+        - election-service
+      summary: Add an Election
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: '#/components/schemas/Election'
+                - required:
+                    - name
+                    - endTime
+                    - startTime
+      responses:
+        '201':
+          description: Election added successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/elections/{id}:
+    patch:
+      tags:
+        - election-service
+      summary: Edit an Election
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+        - name: id
+          in: path
+          required: true
+          description: Election ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Election'
+      responses:
+        '200':
+          description: Election updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body, User email not yet verified or Election is has already commenced or ended
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User or Election not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+    delete:
+      tags:
+        - election-service
+      summary: Delete an Election
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+        - name: id
+          in: path
+          required: true
+          description: Election ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Election deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body, User email not yet verified or Election has already commenced
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User or Election not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/elections/add-contestant/{id}:
+    patch:
+      tags:
+        - election-service
+      summary: Add Contestant to an Election
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+        - name: id
+          in: path
+          required: true
+          description: Election ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ElectionContestant'
+      responses:
+        '200':
+          description: Contestant added to election successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body, User email not yet verified, Election has already commenced or Contestant not registered under a party or is already registered for election
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User, Contestant or Election not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/elections/remove-contestant/{id}:
+    patch:
+      tags:
+        - election-service
+      summary: Remove Contestant from an Election
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+        - name: id
+          in: path
+          required: true
+          description: Election ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ElectionContestant'
+      responses:
+        '200':
+          description: Contestant removed from election successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body, User email not yet verified, Election has already commenced or Contestant is not registered for election
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User, Contestant or Election not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+
+  /v1/notifications:
+    get:
+      tags:
+        - notification-service
+      summary: Get Notifications (force-paginated)
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 10
+            enum:
+              - 10
+              - 25
+              - 50
+        - name: startTime
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: endTime
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Notifications fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request queries or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/logs:
+    get:
+      tags:
+        - notification-service
+      summary: Get Logs (force-paginated)
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 10
+            enum:
+              - 10
+              - 25
+              - 50
+        - name: startTime
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+        - name: endTime
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date-time
+      responses:
+        '200':
+          description: Logs fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request queries or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from User
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+
+  /v1/results/{id}:
+    get:
+      tags:
+        - result-service
+      summary: Get Results of an Election
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+        - name: id
+          in: path
+          required: true
+          description: Election ID
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Results fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request queries or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User or Results not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+
+  /v1/face-id/register:
+    post:
+      tags:
+        - face-id-service
+      summary: Register a Face ID
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RegisterFaceID'
+      responses:
+        '201':
+          description: User facial data registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from Admin or Super-Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/face-id/fetch:
+    post:
+      tags:
+        - face-id-service
+      summary: Fetch a user's Face ID
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+      responses:
+        '200':
+          description: User facial data fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from Admin or Super-Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+
+  /v1/votes/cast:
+    post:
+      tags:
+        - vote-service
+      summary: Cast a vote
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CastVote'
+      responses:
+        '200':
+          description: Vote cast successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from Admin or Super-Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/votes/{id}:
+    get:
+      tags:
+        - vote-service
+      summary: Get Election Votes (force-paginated)
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+        - name: id
+          in: path
+          required: true
+          description: Election ID
+          schema:
+            type: string
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            format: int32
+            default: 10
+            enum:
+              - 10
+              - 25
+              - 50
+      responses:
+        '200':
+          description: Votes fetched successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request queries or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+  /v1/votes/verify:
+    post:
+      tags:
+        - vote-service
+      summary: Verify a vote
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-api-key
+          in: header
+          required: true
+          schema:
+            type: string
+            deprecated: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyVote'
+      responses:
+        '200':
+          description: Vote checked successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResponseDTO'
+        '400':
+          description: Bad request body or User email not yet verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '401':
+          description: Expired or invalid session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '403':
+          description: Unauthorized access from Admin or Super-Admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '407':
+          description: Failed to authenticate with proxy server
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDTO'
+components:
+  schemas:
+    Gender:
+      type: string
+      enum:
+        - MALE
+        - FEMALE
+    ResponseDTO:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        data:
+          type: object
+          nullable: true
+    ErrorDTO:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        errors:
+          type: object
+          nullable: true
+    User:
+      required:
+        - vin
+        - delimitationCode
+        - address
+        - occupation
+        - lastName
+        - gender
+        - firstName
+        - email
+        - dateOfBirth
+        - password
+      type: object
+      properties:
+        vin:
+          type: string
+        delimitationCode:
+          type: string
+        middleName:
+          type: string
+        address:
+          type: string
+        occupation:
+          type: string
+        lastName:
+          type: string
+        gender:
+          $ref: '#/components/schemas/Gender'
+        firstName:
+          type: string
+        email:
+          type: string
+          format: email
+        dateOfBirth:
+          type: string
+          format: date
+        password:
+          type: string
+          format: password
+    Admin:
+      required:
+        - lastName
+        - firstName
+        - email
+        - password
+        - role
+      type: object
+      properties:
+        middleName:
+          type: string
+        lastName:
+          type: string
+        firstName:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        role:
+          type: string
+          enum:
+            - ADMIN
+            - SUPER_ADMIN
+    VerifyOTP:
+      required:
+        - otp
+        - email
+      type: object
+      properties:
+        otp:
+          type: string
+        email:
+          type: string
+          format: email
+    ForgotPassword:
+      required:
+        - email
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+    ResetPassword:
+      required:
+        - resetToken
+        - email
+        - password
+      type: object
+      properties:
+        resetToken:
+          type: string
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    Login:
+      required:
+        - email
+        - password
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+    RefreshToken:
+      required:
+        - refreshToken
+      type: object
+      properties:
+        refreshToken:
+          type: string
+    SendOTP:
+      required:
+        - subject
+        - email
+      type: object
+      properties:
+        duration:
+          type: number
+          format: int32
+        subject:
+          type: string
+        email:
+          type: string
+          format: email
+    AdminInvite:
+      required:
+        - userID
+      type: object
+      properties:
+        expiresAt:
+          type: string
+          format: date-time
+          description: How long the Admin will have admin rights
+        userID:
+          type: string
+    ModifyAdminToken:
+      type: object
+      properties:
+        expiresAt:
+          type: number
+          format: int32
+          example: -1
+          description: How long the Admin will have admin rights. A value of -1 indicates no expiry
+        statusCode:
+          type: string
+          enum:
+            - REVOKED
+            - ACTIVE
+    Party:
+      type: object
+      properties:
+        shortName:
+          type: string
+        longName:
+          type: string
+        motto:
+          type: string
+        partyImage:
+          type: string
+          format: binary
+    Contestant:
+      type: object
+      properties:
+        stateOfOrigin:
+          type: string
+        firstName:
+          type: string
+        lastName:
+          type: string
+        middleName:
+          type: string
+        party:
+          type: string
+          description: The Party ID of the contestant
+        gender:
+          $ref: '#/components/schemas/Gender'
+        contestantImage:
+          type: string
+          format: binary
+    Election:
+      type: object
+      properties:
+        name:
+          type: string
+        endTime:
+          type: string
+          format: date-time
+        startTime:
+          type: string
+          format: date-time
+        delimitationCode:
+          type: string
+    ElectionContestant:
+      required:
+        - contestantID
+      type: object
+      properties:
+        contestantID:
+          type: string
+    RegisterFaceID:
+      required:
+        - image
+      type: object
+      properties:
+        image:
+          type: string
+          format: binary
+          description: User image
+    CastVote:
+      required:
+        - electionID
+        - partyID
+      type: object
+      properties:
+        electionID:
+          type: string
+          description: The ID of the election user is voting in
+        partyID:
+          type: string
+          description: The ID of the Party user is voting for
+    VerifyVote:
+      required:
+        - voteID
+      type: object
+      properties:
+        voteID:
+          type: string

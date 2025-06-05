@@ -7,8 +7,8 @@ require('../models/election.model');
 require('../models/contestant.model');
 const Result = require('../models/result.model');
 const { logger } = require('../utils/logger.utils');
-const { asyncHandler } = require('../middlewares/error.middlewares');
 const { getResultsKey, redisCacheExpiry } = require('../utils/redis.utils');
+const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
 
 /**
  * @param {express.Request & {redisClient: Redis}} req
@@ -37,6 +37,10 @@ const getResults = async (req, res) => {
       { path: 'results.party', select: 'longName shortName logoUrl -_id' },
       { path: 'results.contestants', select: 'firstName lastName profileImageUrl -_id' },
     ]);
+  if (!results) {
+    logger.error('Results not found');
+    throw new APIError('Results not found', StatusCodes.NOT_FOUND);
+  }
 
   // cache fetched results
   await req.redisClient.setex(resultKey, redisCacheExpiry, JSON.stringify(results));

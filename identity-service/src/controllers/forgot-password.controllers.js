@@ -86,7 +86,7 @@ const verifyOtp = async (req, res) => {
   const isOtpValid = await verifyOTP(email, otp, req.redisClient);
   if (!isOtpValid) {
     logger.error('Invalid OTP!');
-    throw new APIError('Invalid OTP!', StatusCodes.FORBIDDEN);
+    throw new APIError('Invalid OTP!', StatusCodes.BAD_REQUEST);
   }
 
   // generate reset token for user and store in cache
@@ -124,7 +124,7 @@ const resetPassword = async (req, res) => {
   let token = await req.redisClient.get(tokenCacheKey);
   if (!token) {
     logger.error('Reset token expired');
-    throw new APIError('Reset token expired', StatusCodes.NOT_FOUND);
+    throw new APIError('Reset token expired', StatusCodes.GONE);
   }
 
   const resetTokenMatches = await verify(token, resetToken);
