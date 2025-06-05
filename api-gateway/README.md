@@ -70,7 +70,7 @@ This project serves as the central API Gateway for the voting platform - Electra
 
 ## API Endpoints
 
-API Documentation @ [Electranet API Swagger Documentation](https://electranet-f0ls.onrender.com/swagger-ui/index.html)
+API Documentation @ [Electranet API Swagger Documentation](https://electranet-f0ls.onrender.com/api-docs)
 
 ## License
 
