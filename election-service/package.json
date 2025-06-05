@@ -12,11 +12,10 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "nodemon": "^3.1.10"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.49.9",
-    "argon2": "^0.41.1",
+    "@supabase/supabase-js": "^2.49.10",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
@@ -27,11 +26,11 @@
     "ioredis": "^5.6.1",
     "joi": "^17.13.3",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.13.2",
-    "mongoose-paginate-v2": "^1.9.0",
-    "multer": "^2.0.0",
-    "rate-limit-redis": "^4.2.0",
-    "rate-limiter-flexible": "^7.0.0",
+    "mongoose": "^8.15.1",
+    "mongoose-paginate-v2": "^1.9.1",
+    "multer": "^2.0.1",
+    "rate-limit-redis": "^4.2.1",
+    "rate-limiter-flexible": "^7.1.1",
     "winston": "^3.17.0"
   }
 }
