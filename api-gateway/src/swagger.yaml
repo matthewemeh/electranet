@@ -19,24 +19,15 @@ tags:
     description: Operations related to casting and verifying votes
   - name: result-service
     description: Operations related to fetching election results and statistics
+security:
+  - ApiKeyAuth: []
+  - BearerAuth: []
 paths:
   /v1/auth/register/user:
     post:
       tags:
         - identity-service
       summary: Register a new user
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
       requestBody:
         required: true
         content:
@@ -79,18 +70,6 @@ paths:
       tags:
         - identity-service
       summary: Register a new admin
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
       requestBody:
         required: true
         content:
@@ -139,18 +118,6 @@ paths:
       tags:
         - identity-service
       summary: Verify User or Admin registration via OTP
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
       requestBody:
         required: true
         content:
@@ -199,18 +166,6 @@ paths:
       tags:
         - identity-service
       summary: Initiate forgot password process
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
       requestBody:
         required: true
         content:
@@ -253,18 +208,6 @@ paths:
       tags:
         - identity-service
       summary: Verify forgot password via OTP
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
       requestBody:
         required: true
         content:
@@ -313,18 +256,6 @@ paths:
       tags:
         - identity-service
       summary: Reset user password
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
       requestBody:
         required: true
         content:
@@ -373,18 +304,6 @@ paths:
       tags:
         - identity-service
       summary: User or Admin login
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
       requestBody:
         required: true
         content:
@@ -433,18 +352,6 @@ paths:
       tags:
         - identity-service
       summary: User or Admin logout
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
       requestBody:
         required: true
         content:
@@ -481,18 +388,6 @@ paths:
       tags:
         - identity-service
       summary: Get new refresh token
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
       requestBody:
         required: true
         content:
@@ -535,18 +430,6 @@ paths:
       tags:
         - identity-service
       summary: Send OTP to a user
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
       requestBody:
         required: true
         content:
@@ -584,17 +467,6 @@ paths:
         - identity-service
       summary: Get all users (force-paginated)
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
         - name: page
           in: query
           required: false
@@ -690,18 +562,6 @@ paths:
       tags:
         - identity-service
       summary: Invite an Admin to assist in managing platform
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
       requestBody:
         required: true
         content:
@@ -763,17 +623,6 @@ paths:
         - identity-service
       summary: Get Admin Tokens (force-paginated)
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
         - name: page
           in: query
           required: false
@@ -847,17 +696,6 @@ paths:
             schema:
               $ref: '#/components/schemas/ModifyAdminToken'
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
         - name: id
           in: path
           description: Admin Token ID
@@ -914,17 +752,6 @@ paths:
         - election-service
       summary: Get Parties
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
         - name: page
           in: query
           required: false
@@ -989,18 +816,6 @@ paths:
       tags:
         - election-service
       summary: Add a Party
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
       requestBody:
         required: true
         content:
@@ -1061,17 +876,6 @@ paths:
         - election-service
       summary: Edit a Party
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
         - name: id
           in: path
           description: Party ID
@@ -1132,18 +936,6 @@ paths:
       tags:
         - election-service
       summary: Add a Contestant
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
       requestBody:
         required: true
         content:
@@ -1206,17 +998,6 @@ paths:
         - election-service
       summary: Edit a Contestant
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
         - name: id
           in: path
           description: Contestant ID
@@ -1278,17 +1059,6 @@ paths:
         - election-service
       summary: Get Contestants (force-paginated)
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
         - name: page
           in: query
           required: false
@@ -1385,17 +1155,6 @@ paths:
         - election-service
       summary: Get all contestants in an election
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
         - name: id
           in: path
           description: Election ID
@@ -1451,17 +1210,6 @@ paths:
         - election-service
       summary: Get User Elections (force-paginated)
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
         - name: page
           in: query
           required: false
@@ -1541,17 +1289,6 @@ paths:
         - election-service
       summary: Get Elections (force-paginated)
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
         - name: page
           in: query
           required: false
@@ -1634,18 +1371,6 @@ paths:
       tags:
         - election-service
       summary: Add an Election
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
       requestBody:
         required: true
         content:
@@ -1706,17 +1431,6 @@ paths:
         - election-service
       summary: Edit an Election
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
         - name: id
           in: path
           required: true
@@ -1777,17 +1491,6 @@ paths:
         - election-service
       summary: Delete an Election
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
         - name: id
           in: path
           required: true
@@ -1843,17 +1546,6 @@ paths:
         - election-service
       summary: Add Contestant to an Election
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
         - name: id
           in: path
           required: true
@@ -1915,17 +1607,6 @@ paths:
         - election-service
       summary: Remove Contestant from an Election
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
         - name: id
           in: path
           required: true
@@ -1988,17 +1669,6 @@ paths:
         - notification-service
       summary: Get Notifications (force-paginated)
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
         - name: page
           in: query
           required: false
@@ -2072,17 +1742,6 @@ paths:
         - notification-service
       summary: Get Logs (force-paginated)
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
         - name: page
           in: query
           required: false
@@ -2163,17 +1822,6 @@ paths:
         - result-service
       summary: Get Results of an Election
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
         - name: id
           in: path
           required: true
@@ -2223,18 +1871,6 @@ paths:
       tags:
         - face-id-service
       summary: Register a Face ID
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
       requestBody:
         required: true
         content:
@@ -2289,18 +1925,6 @@ paths:
       tags:
         - face-id-service
       summary: Fetch a user's Face ID
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
       responses:
         '200':
           description: User facial data fetched successfully
@@ -2350,18 +1974,6 @@ paths:
       tags:
         - vote-service
       summary: Cast a vote
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
       requestBody:
         required: true
         content:
@@ -2417,17 +2029,6 @@ paths:
         - vote-service
       summary: Get Election Votes (force-paginated)
       parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
         - name: id
           in: path
           required: true
@@ -2494,18 +2095,6 @@ paths:
       tags:
         - vote-service
       summary: Verify a vote
-      parameters:
-        - name: Authorization
-          in: header
-          required: true
-          schema:
-            type: string
-        - name: x-api-key
-          in: header
-          required: true
-          schema:
-            type: string
-            deprecated: false
       requestBody:
         required: true
         content:
@@ -2556,6 +2145,15 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorDTO'
 components:
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: x-api-key
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
   schemas:
     Gender:
       type: string
