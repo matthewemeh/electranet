@@ -33,14 +33,14 @@ const getUsers = async (req, res) => {
   logger.info('Get Users endpoint called');
 
   // validate the request query
-  const { error } = validateGetUsers(req.query);
+  const { error, value } = validateGetUsers(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { role: adminRole } = req.user;
-  const { page, limit, ...docQuery } = req.query;
+  const { page, limit, ...docQuery } = value;
   const { delimitationCode, email, firstName, lastName, role } = docQuery;
 
   // check cache for users
