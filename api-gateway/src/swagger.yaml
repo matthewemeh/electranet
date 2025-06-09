@@ -467,45 +467,17 @@ paths:
         - identity-service
       summary: Get all users (force-paginated)
       parameters:
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 1
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 10
-            enum:
-              - 10
-              - 25
-              - 50
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/LastName'
+        - $ref: '#/components/parameters/FirstName'
+        - $ref: '#/components/parameters/DelimitationCode'
         - name: email
           in: query
           required: false
           schema:
             type: string
             format: string
-        - name: delimitationCode
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: firstName
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: lastName
-          in: query
-          required: false
-          schema:
-            type: string
         - name: role
           in: query
           required: false
@@ -623,24 +595,8 @@ paths:
         - identity-service
       summary: Get Admin Tokens (force-paginated)
       parameters:
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 1
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 10
-            enum:
-              - 10
-              - 25
-              - 50
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
       responses:
         '200':
           description: Admin Tokens fetched successfully
@@ -750,7 +706,7 @@ paths:
     get:
       tags:
         - election-service
-      summary: Get Parties
+      summary: Get Parties (optional pagination)
       parameters:
         - name: page
           in: query
@@ -1059,24 +1015,11 @@ paths:
         - election-service
       summary: Get Contestants (force-paginated)
       parameters:
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 1
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 10
-            enum:
-              - 10
-              - 25
-              - 50
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Gender'
+        - $ref: '#/components/parameters/LastName'
+        - $ref: '#/components/parameters/FirstName'
         - name: party
           in: query
           required: false
@@ -1088,24 +1031,6 @@ paths:
           required: false
           schema:
             type: boolean
-        - name: gender
-          in: query
-          required: false
-          schema:
-            type: string
-            enum:
-              - MALE
-              - FEMALE
-        - name: firstName
-          in: query
-          required: false
-          schema:
-            type: string
-        - name: lastName
-          in: query
-          required: false
-          schema:
-            type: string
       responses:
         '200':
           description: Parties fetched successfully
@@ -1210,36 +1135,10 @@ paths:
         - election-service
       summary: Get User Elections (force-paginated)
       parameters:
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 1
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 10
-            enum:
-              - 10
-              - 25
-              - 50
-        - name: startTime
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date-time
-        - name: endTime
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date-time
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/EndTime'
+        - $ref: '#/components/parameters/StartTime'
       responses:
         '200':
           description: Elections fetched successfully
@@ -1289,41 +1188,11 @@ paths:
         - election-service
       summary: Get Elections (force-paginated)
       parameters:
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 1
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 10
-            enum:
-              - 10
-              - 25
-              - 50
-        - name: startTime
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date-time
-        - name: endTime
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date-time
-        - name: delimitationCode
-          in: query
-          required: false
-          schema:
-            type: string
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/EndTime'
+        - $ref: '#/components/parameters/StartTime'
+        - $ref: '#/components/parameters/DelimitationCode'
       responses:
         '200':
           description: Elections fetched successfully
@@ -1669,36 +1538,10 @@ paths:
         - notification-service
       summary: Get Notifications (force-paginated)
       parameters:
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 1
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 10
-            enum:
-              - 10
-              - 25
-              - 50
-        - name: startTime
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date-time
-        - name: endTime
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date-time
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/EndTime'
+        - $ref: '#/components/parameters/StartTime'
       responses:
         '200':
           description: Notifications fetched successfully
@@ -1742,36 +1585,10 @@ paths:
         - notification-service
       summary: Get Logs (force-paginated)
       parameters:
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 1
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 10
-            enum:
-              - 10
-              - 25
-              - 50
-        - name: startTime
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date-time
-        - name: endTime
-          in: query
-          required: false
-          schema:
-            type: string
-            format: date-time
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/EndTime'
+        - $ref: '#/components/parameters/StartTime'
       responses:
         '200':
           description: Logs fetched successfully
@@ -2029,30 +1846,14 @@ paths:
         - vote-service
       summary: Get Election Votes (force-paginated)
       parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
         - name: id
           in: path
           required: true
           description: Election ID
           schema:
             type: string
-        - name: page
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 1
-        - name: limit
-          in: query
-          required: false
-          schema:
-            type: integer
-            format: int32
-            default: 10
-            enum:
-              - 10
-              - 25
-              - 50
       responses:
         '200':
           description: Votes fetched successfully
@@ -2154,6 +1955,57 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
+  parameters:
+    DelimitationCode:
+      name: delimitationCode
+      in: query
+      schema:
+        type: string
+    StartTime:
+      name: startTime
+      in: query
+      schema:
+        type: string
+        format: date-time
+    EndTime:
+      name: endTime
+      in: query
+      schema:
+        type: string
+        format: date-time
+    FirstName:
+      name: firstName
+      in: query
+      schema:
+        type: string
+    LastName:
+      name: lastName
+      in: query
+      schema:
+        type: string
+    Gender:
+      name: gender
+      in: query
+      schema:
+        $ref: '#/components/schemas/Gender'
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        format: int32
+        default: 1
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        format: int32
+        default: 10
+        enum:
+          - 10
+          - 25
+          - 50
   schemas:
     Gender:
       type: string
