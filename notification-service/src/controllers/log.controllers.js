@@ -37,12 +37,15 @@ const getLogs = async (req, res) => {
   }
 
   // fallback to DB
-  const paginationFilters = { $and: [] };
-  if (startTime) {
-    paginationFilters.$and.push({ createdAt: { $gte: startTime } });
-  }
-  if (endTime) {
-    paginationFilters.$and.push({ createdAt: { $lte: endTime } });
+  const paginationFilters = {};
+  if (startTime || endTime) {
+    paginationFilters.$and = [];
+    if (startTime) {
+      paginationFilters.$and.push({ createdAt: { $gte: startTime } });
+    }
+    if (endTime) {
+      paginationFilters.$and.push({ createdAt: { $lte: endTime } });
+    }
   }
 
   paginatedLogs = await Log.paginate(paginationFilters, {
