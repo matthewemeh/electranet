@@ -13,9 +13,7 @@ const {
   modifyAdminToken,
 } = require('../controllers/user.controllers');
 
-router.use(validateAuthKey);
-
-router.use(verifyToken);
+router.use(validateAuthKey, verifyToken);
 
 router.use(verifyAdminToken);
 

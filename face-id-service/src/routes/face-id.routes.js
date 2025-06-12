@@ -7,11 +7,7 @@ const { validateAuthKey, verifyToken, verifyUser } = require('../middlewares/aut
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-router.use(validateAuthKey);
-
-router.use(verifyToken);
-
-router.use(verifyUser);
+router.use(validateAuthKey, verifyToken, verifyUser);
 
 router.get('/fetch', fetchUserFaceID);
 

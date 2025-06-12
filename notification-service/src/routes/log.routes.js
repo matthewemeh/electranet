@@ -7,11 +7,7 @@ const {
   verifyAdminToken,
 } = require('../middlewares/auth.middlewares');
 
-router.use(validateAuthKey);
-
-router.use(verifyToken);
-
-router.use(verifyAdminToken);
+router.use(validateAuthKey, verifyToken, verifyAdminToken);
 
 router.get('/', getLogs);
 

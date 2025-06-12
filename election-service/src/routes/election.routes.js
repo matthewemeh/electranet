@@ -16,9 +16,7 @@ const {
   getUserElections,
 } = require('../controllers/election.controllers');
 
-router.use(validateAuthKey);
-
-router.use(verifyToken);
+router.use(validateAuthKey, verifyToken);
 
 router.get('/get-user-elections', verifyUser, getUserElections);
 

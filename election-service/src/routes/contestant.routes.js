@@ -16,9 +16,7 @@ const {
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-router.use(validateAuthKey);
-
-router.use(verifyToken);
+router.use(validateAuthKey, verifyToken);
 
 router.get('/:id', getElectionContestants);
 

@@ -11,11 +11,7 @@ const {
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-router.use(validateAuthKey);
-
-router.use(verifyToken);
-
-router.use(verifyAdminToken);
+router.use(validateAuthKey, verifyToken, verifyAdminToken);
 
 router.get('/', getParties);
 

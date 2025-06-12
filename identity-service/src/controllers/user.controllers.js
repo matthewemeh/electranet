@@ -123,7 +123,7 @@ const inviteAdmin = async (req, res) => {
   const userCacheKey = getUserKey(userID);
   const user = await fetchData(
     userCacheKey,
-    { _id: userID, role: { $ne: ROLES.USER } },
+    { _id: userID, role: ROLES.ADMIN },
     User,
     req.redisClient
   );
