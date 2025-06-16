@@ -6,7 +6,7 @@ const Log = require('../models/log.model');
 const { logger } = require('../utils/logger.utils');
 const Election = require('../models/election.model');
 const Contestant = require('../models/contestant.model');
-const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
+const { APIError } = require('../middlewares/error.middlewares');
 const { getElectionsKey, redisCacheExpiry, getUserElectionsKey } = require('../utils/redis.utils');
 const {
   validateElection,
@@ -24,14 +24,14 @@ const addElection = async (req, res) => {
   logger.info('Add Election endpoint called');
 
   // validate request body
-  const { error } = validateElection(req.body);
+  const { error, value: reqBody } = validateElection(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   // proceed to create election
-  const election = await Election.create(req.body);
+  const election = await Election.create(reqBody);
 
   // create an event log
   await Log.create({
@@ -170,7 +170,7 @@ const updateElection = async (req, res) => {
   logger.info('Update Election endpoint called');
 
   // validate request body
-  const { error } = validateElectionUpdate(req.body);
+  const { error, value: reqBody } = validateElectionUpdate(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
@@ -178,7 +178,6 @@ const updateElection = async (req, res) => {
 
   // update the election
   const { id } = req.params;
-  const payload = req.body;
 
   // check if election exists
   const election = await Election.findById(id);
@@ -188,11 +187,11 @@ const updateElection = async (req, res) => {
   }
 
   // check if fields are editable
-  if (payload.endTime && election.hasEnded) {
+  if (reqBody.endTime && election.hasEnded) {
     logger.info('Completed election cannot be edited');
     throw new APIError('Completed election cannot be edited', StatusCodes.BAD_REQUEST);
   } else if (
-    (payload.startTime || payload.name || payload.delimitationCode) &&
+    (reqBody.startTime || reqBody.name || reqBody.delimitationCode) &&
     election.hasStarted
   ) {
     logger.info('Commenced election cannot be edited');
@@ -200,7 +199,7 @@ const updateElection = async (req, res) => {
   }
 
   // proceed to update election
-  Object.assign(election, payload);
+  Object.assign(election, reqBody);
   await election.save();
 
   // create an event log
@@ -262,14 +261,14 @@ const addContestant = async (req, res) => {
   logger.info('Add Election Contestant endpoint called');
 
   // validate request body
-  const { error } = validateElectionContestant(req.body);
+  const { error, value: reqBody } = validateElectionContestant(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { id } = req.params;
-  const { contestantID } = req.body;
+  const { contestantID } = reqBody;
 
   // check if contestant exists and is registered under a party
   const contestant = await Contestant.findById(contestantID);
@@ -323,14 +322,14 @@ const removeContestant = async (req, res) => {
   logger.info('Remove Election Contestant endpoint called');
 
   // validate request body
-  const { error } = validateElectionContestant(req.body);
+  const { error, value: reqBody } = validateElectionContestant(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { id } = req.params;
-  const { contestantID } = req.body;
+  const { contestantID } = reqBody;
 
   // check if contestant exists
   const contestant = await Contestant.findById(contestantID);
@@ -376,11 +375,11 @@ const removeContestant = async (req, res) => {
 };
 
 module.exports = {
-  addElection: asyncHandler(addElection),
-  getElections: asyncHandler(getElections),
-  addContestant: asyncHandler(addContestant),
-  updateElection: asyncHandler(updateElection),
-  deleteElection: asyncHandler(deleteElection),
-  getUserElections: asyncHandler(getUserElections),
-  removeContestant: asyncHandler(removeContestant),
+  addElection,
+  getElections,
+  addContestant,
+  updateElection,
+  deleteElection,
+  getUserElections,
+  removeContestant,
 };

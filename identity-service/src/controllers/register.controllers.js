@@ -7,7 +7,7 @@ const User = require('../models/user.model');
 const { logger } = require('../utils/logger.utils');
 const { generateTokens } = require('../utils/token.utils');
 const { sendOTP, verifyOTP } = require('../utils/otp.utils');
-const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
+const { APIError } = require('../middlewares/error.middlewares');
 const { getUserKey, redisCacheExpiry, fetchData } = require('../utils/redis.utils');
 const {
   validateVerifyOTP,
@@ -23,13 +23,13 @@ const registerUser = async (req, res) => {
   logger.info('Register User endpoint called');
 
   // validate the request body
-  const { error } = validateRegisterUser(req.body);
+  const { error, value: reqBody } = validateRegisterUser(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { email, ...body } = req.body;
+  const { email, ...body } = reqBody;
 
   // check if user already exists
   const userCacheKey = getUserKey(email);
@@ -73,13 +73,13 @@ const registerAdmin = async (req, res) => {
   logger.info('Register Admin endpoint called');
 
   // validate the request body
-  const { error } = validateRegisterAdmin(req.body);
+  const { error, value: reqBody } = validateRegisterAdmin(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { email, role, ...body } = req.body;
+  const { email, role, ...body } = reqBody;
 
   // check if user already exists
   const userCacheKey = getUserKey(email);
@@ -130,13 +130,13 @@ const verifyOtp = async (req, res) => {
   logger.info('Register OTP Verification endpoint called');
 
   // validate the request body
-  const { error } = validateVerifyOTP(req.body);
+  const { error, value: reqBody } = validateVerifyOTP(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { email, otp } = req.body;
+  const { email, otp } = reqBody;
 
   // check if user exists and has email verified
   const userCacheKey = getUserKey(email);
@@ -170,8 +170,4 @@ const verifyOtp = async (req, res) => {
     .json({ success: true, message: 'Email verification successful', data: null });
 };
 
-module.exports = {
-  verifyOtp: asyncHandler(verifyOtp),
-  registerUser: asyncHandler(registerUser),
-  registerAdmin: asyncHandler(registerAdmin),
-};
+module.exports = { verifyOtp, registerUser, registerAdmin };

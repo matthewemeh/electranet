@@ -19,14 +19,6 @@ class APIError extends Error {
 }
 
 /**
- * @param {Function} fn
- * @returns {(req: express.Request, res: express.Response, next:express.NextFunction) => void}
- */
-const asyncHandler = fn => (req, res, next) => {
-  Promise.resolve(fn(req, res, next)).catch(next);
-};
-
-/**
  * @param {any} error
  * @param {express.Request} req
  * @param {express.Response} res
@@ -68,4 +60,4 @@ const globalErrorHandler = (error, req, res, next) => {
   }
 };
 
-module.exports = { APIError, asyncHandler, globalErrorHandler };
+module.exports = { APIError, globalErrorHandler };

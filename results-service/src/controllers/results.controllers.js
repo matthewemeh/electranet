@@ -7,8 +7,8 @@ require('../models/election.model');
 require('../models/contestant.model');
 const Result = require('../models/result.model');
 const { logger } = require('../utils/logger.utils');
+const { APIError } = require('../middlewares/error.middlewares');
 const { getResultsKey, redisCacheExpiry } = require('../utils/redis.utils');
-const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
 
 /**
  * @param {express.Request & {redisClient: Redis}} req
@@ -51,4 +51,4 @@ const getResults = async (req, res) => {
     .json({ success: true, message: 'Results fetched successfully', data: results });
 };
 
-module.exports = { getResults: asyncHandler(getResults) };
+module.exports = { getResults };

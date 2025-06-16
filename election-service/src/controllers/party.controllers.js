@@ -8,8 +8,8 @@ const supabase = require('../services/supabase');
 const { PARTY_IMAGE_KEY } = require('../constants');
 const { logger } = require('../utils/logger.utils');
 const { getPartyImageKey } = require('../utils/party.utils');
+const { APIError } = require('../middlewares/error.middlewares');
 const { redisCacheExpiry, getPartiesKey } = require('../utils/redis.utils');
-const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
 const {
   validateParty,
   validateGetParties,
@@ -26,7 +26,7 @@ const addParty = async (req, res) => {
   logger.info('Add Party endpoint called');
 
   // validate request body and files
-  const { error } = validateParty(req.body);
+  const { error, value: reqBody } = validateParty(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
@@ -43,7 +43,7 @@ const addParty = async (req, res) => {
     );
   }
 
-  const party = new Party(req.body);
+  const party = new Party(reqBody);
 
   // Upload to Supabase Storage
   const filePath = getPartyImageKey(party._id);
@@ -87,8 +87,7 @@ const updateParty = async (req, res) => {
   logger.info('Edit Party endpoint called');
 
   // validate request body
-  const payload = req.body ?? {};
-  const { error } = validatePartyUpdate(payload);
+  const { error, value: reqBody } = validatePartyUpdate(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
@@ -104,7 +103,7 @@ const updateParty = async (req, res) => {
   }
 
   // update non-file fields
-  Object.assign(party, payload);
+  Object.assign(party, reqBody);
 
   // check if party image is provided
   // if provided, upload to Supabase Storage and update party logoUrl
@@ -235,8 +234,4 @@ const getParties = async (req, res) => {
     .json({ success: true, message: 'Parties fetched successfully', data: parties });
 };
 
-module.exports = {
-  addParty: asyncHandler(addParty),
-  getParties: asyncHandler(getParties),
-  updateParty: asyncHandler(updateParty),
-};
+module.exports = { addParty, getParties, updateParty };

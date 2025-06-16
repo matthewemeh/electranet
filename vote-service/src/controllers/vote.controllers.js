@@ -11,8 +11,8 @@ const { logger } = require('../utils/logger.utils');
 const Election = require('../models/election.model');
 const { sendEmail } = require('../utils/email.utils');
 const Contestant = require('../models/contestant.model');
+const { APIError } = require('../middlewares/error.middlewares');
 const { sendNotification } = require('../utils/notification.utils');
-const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
 const { validateGetVotes, validateVerifyUserVote } = require('../utils/validation.utils');
 const {
   getUserKey,
@@ -167,13 +167,13 @@ const verifyUserVote = async (req, res) => {
   logger.info('Verify User Vote endpoint called');
 
   // validate request body
-  const { error } = validateVerifyUserVote(req.body);
+  const { error, value: reqBody } = validateVerifyUserVote(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { voteID } = req.body;
+  const { voteID } = reqBody;
 
   // check cached verified vote result
   const voteVerifyKey = getVoteVerifyKey(voteID);
@@ -265,8 +265,4 @@ const getVotes = async (req, res) => {
     .json({ success: true, message: 'Votes fetched successfully', data: paginatedVotes });
 };
 
-module.exports = {
-  getVotes: asyncHandler(getVotes),
-  castVote: asyncHandler(castVote),
-  verifyUserVote: asyncHandler(verifyUserVote),
-};
+module.exports = { getVotes, castVote, verifyUserVote };

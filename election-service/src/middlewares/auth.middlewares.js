@@ -6,8 +6,8 @@ const { StatusCodes } = require('http-status-codes');
 const { ROLES } = require('../constants');
 const User = require('../models/user.model');
 const { logger } = require('../utils/logger.utils');
+const { APIError } = require('./error.middlewares');
 const AdminToken = require('../models/admin-token.model');
-const { asyncHandler, APIError } = require('./error.middlewares');
 const { fetchData, getAdminTokenKey, getUserKey } = require('../utils/redis.utils');
 
 /**
@@ -130,9 +130,4 @@ const verifyUser = async (req, res, next) => {
   next();
 };
 
-module.exports = {
-  verifyUser: asyncHandler(verifyUser),
-  verifyToken: asyncHandler(verifyToken),
-  validateAuthKey: asyncHandler(validateAuthKey),
-  verifyAdminToken: asyncHandler(verifyAdminToken),
-};
+module.exports = { verifyUser, verifyToken, validateAuthKey, verifyAdminToken };

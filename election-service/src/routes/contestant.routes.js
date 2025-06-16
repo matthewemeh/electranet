@@ -1,6 +1,7 @@
 const multer = require('multer');
 const router = require('express').Router();
 
+const { isValidID } = require('../middlewares/mongoose.middlewares');
 const {
   verifyToken,
   validateAuthKey,
@@ -18,7 +19,7 @@ const upload = multer({ storage });
 
 router.use(validateAuthKey, verifyToken);
 
-router.get('/:id', getElectionContestants);
+router.get('/:id', isValidID, getElectionContestants);
 
 router.use(verifyAdminToken);
 
@@ -26,6 +27,6 @@ router.get('/', getContestants);
 
 router.post('/add', upload.any(), addContestant);
 
-router.patch('/edit/:id', upload.any(), updateContestant);
+router.patch('/edit/:id', isValidID, upload.any(), updateContestant);
 
 module.exports = router;

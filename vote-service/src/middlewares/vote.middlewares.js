@@ -4,9 +4,9 @@ const { StatusCodes } = require('http-status-codes');
 
 const Party = require('../models/party.model');
 const { logger } = require('../utils/logger.utils');
+const { APIError } = require('./error.middlewares');
 const Election = require('../models/election.model');
 const { validateCastVote } = require('../utils/validation.utils');
-const { APIError, asyncHandler } = require('./error.middlewares');
 
 /**
  * @param {express.Request & {redisClient: Redis}} req
@@ -17,13 +17,13 @@ const verifyVote = async (req, res, next) => {
   const { user } = req;
 
   // validate request body
-  const { error } = validateCastVote(req.body);
+  const { error, value: reqBody } = validateCastVote(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { electionID, partyID } = req.body;
+  const { electionID, partyID } = reqBody;
 
   // check if election exists
   const election = await Election.findById(electionID);
@@ -63,4 +63,4 @@ const verifyVote = async (req, res, next) => {
   next();
 };
 
-module.exports = { verifyVote: asyncHandler(verifyVote) };
+module.exports = { verifyVote };

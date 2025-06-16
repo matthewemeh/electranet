@@ -8,8 +8,8 @@ const { logger } = require('../utils/logger.utils');
 const Election = require('../models/election.model');
 const Contestant = require('../models/contestant.model');
 const { CONTESTANT_IMAGE_KEY } = require('../constants');
+const { APIError } = require('../middlewares/error.middlewares');
 const { getContestantImageKey } = require('../utils/party.utils');
-const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
 const {
   validateContestant,
   validateGetContestants,
@@ -32,7 +32,7 @@ const addContestant = async (req, res) => {
   logger.info('Add Contestant endpoint called');
 
   // validate request body and files
-  const { error } = validateContestant(req.body);
+  const { error, value: reqBody } = validateContestant(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
@@ -49,7 +49,7 @@ const addContestant = async (req, res) => {
     );
   }
 
-  const contestant = new Contestant(req.body);
+  const contestant = new Contestant(reqBody);
 
   // Upload to Supabase Storage
   const filePath = getContestantImageKey(contestant._id);
@@ -93,8 +93,7 @@ const updateContestant = async (req, res) => {
   logger.info('Update Contestant endpoint called');
 
   // validate request body
-  const payload = req.body ?? {};
-  const { error } = validateContestantUpdate(payload);
+  const { error, value: reqBody } = validateContestantUpdate(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
@@ -110,7 +109,7 @@ const updateContestant = async (req, res) => {
   }
 
   // update non-file fields
-  Object.assign(contestant, payload);
+  Object.assign(contestant, reqBody);
 
   // check if contestant image is provided
   // if provided, upload to Supabase Storage and update contestant profileImageUrl
@@ -265,9 +264,4 @@ const getElectionContestants = async (req, res) => {
   });
 };
 
-module.exports = {
-  addContestant: asyncHandler(addContestant),
-  getContestants: asyncHandler(getContestants),
-  updateContestant: asyncHandler(updateContestant),
-  getElectionContestants: asyncHandler(getElectionContestants),
-};
+module.exports = { addContestant, getContestants, updateContestant, getElectionContestants };

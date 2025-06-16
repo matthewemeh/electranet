@@ -5,8 +5,8 @@ const { StatusCodes } = require('http-status-codes');
 const supabase = require('../services/supabase');
 const { USER_IMAGE_KEY } = require('../constants');
 const { logger } = require('../utils/logger.utils');
+const { APIError } = require('../middlewares/error.middlewares');
 const { getUserFaceImageKey } = require('../utils/face-id.utils');
-const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
 const { getUserKey, getFaceIdKey, redisCacheExpiry } = require('../utils/redis.utils');
 
 const { SUPABASE_BUCKET_NAME } = process.env;
@@ -105,7 +105,4 @@ const fetchUserFaceID = async (req, res) => {
   res.status(StatusCodes.OK).json({ success: true, message: 'Face ID fetched successfully', data });
 };
 
-module.exports = {
-  registerFace: asyncHandler(registerFace),
-  fetchUserFaceID: asyncHandler(fetchUserFaceID),
-};
+module.exports = { registerFace, fetchUserFaceID };

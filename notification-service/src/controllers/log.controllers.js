@@ -4,9 +4,9 @@ const { StatusCodes } = require('http-status-codes');
 
 const Log = require('../models/log.model');
 const { logger } = require('../utils/logger.utils');
+const { APIError } = require('../middlewares/error.middlewares');
 const { validateGetLogs } = require('../utils/validation.utils');
 const { getLogsKey, redisCacheExpiry } = require('../utils/redis.utils');
-const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
 
 /**
  * @param {express.Request & {redisClient: Redis}} req
@@ -65,4 +65,4 @@ const getLogs = async (req, res) => {
     .json({ success: true, message: 'Logs fetched successfully', data: paginatedLogs });
 };
 
-module.exports = { getLogs: asyncHandler(getLogs) };
+module.exports = { getLogs };

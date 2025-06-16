@@ -1,4 +1,4 @@
-const { Schema, model } = require('mongoose');
+const { Schema, model, Types } = require('mongoose');
 
 const { ROLES } = require('../constants');
 
@@ -24,8 +24,8 @@ const UserSchema = new Schema(
     address: { type: String, trim: true, immutable: true },
     occupation: { type: String, trim: true, immutable: true },
     lastName: { type: String, immutable: true, required: true },
+    electionsVoted: [{ type: Types.ObjectId, ref: 'Election' }],
     firstName: { type: String, immutable: true, required: true },
-    electionsVoted: [{ type: Schema.Types.ObjectId, ref: 'Election' }],
     gender: { type: String, immutable: true, enum: ['MALE', 'FEMALE'] },
     role: { type: String, immutable: true, enum: Object.values(ROLES), required: true },
   },

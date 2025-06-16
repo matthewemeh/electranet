@@ -1,6 +1,7 @@
 const multer = require('multer');
 const router = require('express').Router();
 
+const { isValidID } = require('../middlewares/mongoose.middlewares');
 const { addParty, updateParty, getParties } = require('../controllers/party.controllers');
 const {
   verifyToken,
@@ -17,6 +18,6 @@ router.get('/', getParties);
 
 router.post('/add', upload.any(), addParty);
 
-router.patch('/edit/:id', upload.any(), updateParty);
+router.patch('/edit/:id', isValidID, upload.any(), updateParty);
 
 module.exports = router;

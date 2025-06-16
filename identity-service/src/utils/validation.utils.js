@@ -60,9 +60,9 @@ const validateRegisterAdmin = data => {
 
 const validateSendOTP = data => {
   const schema = Joi.object({
-    duration: Joi.number().strict(),
     subject: Joi.string().required(),
     email: Joi.string().email().required(),
+    duration: Joi.number().integer().strict(),
   });
 
   return schema.validate(data);
@@ -129,7 +129,10 @@ const validateLogout = data => {
 const validateAdminInvite = data => {
   const schema = Joi.object({
     expiresAt: Joi.date(),
-    userID: Joi.string().required(),
+    userID: Joi.string()
+      .pattern(/^[a-f0-9]{24}$/)
+      .messages({ 'string.pattern.base': '"userID" must be a valid ID' })
+      .required(),
   });
 
   return schema.validate(data);
@@ -137,7 +140,7 @@ const validateAdminInvite = data => {
 
 const validateModifyToken = data => {
   const schema = Joi.object({
-    expiresAt: Joi.number().strict().min(-1),
+    expiresAt: Joi.number().integer().strict().min(-1),
     statusCode: Joi.string().equal(...Object.values(ADMIN_TOKEN_STATUSES)),
   })
     .min(1)
@@ -154,9 +157,9 @@ const validateGetUsers = data => {
     firstName: Joi.string(),
     email: Joi.string().email(),
     delimitationCode: Joi.string(),
-    page: Joi.number().min(1).default(1),
-    limit: Joi.number().equal(10, 25, 50).default(10),
     role: Joi.string().equal(ROLES.ADMIN, ROLES.USER),
+    page: Joi.number().integer().positive().default(1),
+    limit: Joi.number().integer().equal(10, 25, 50).default(10),
   });
 
   return schema.validate(data);
@@ -164,8 +167,8 @@ const validateGetUsers = data => {
 
 const validateGetAdminTokens = data => {
   const schema = Joi.object({
-    page: Joi.number().min(1).default(1),
-    limit: Joi.number().equal(10, 25, 50).default(10),
+    page: Joi.number().integer().positive().default(1),
+    limit: Joi.number().integer().equal(10, 25, 50).default(10),
   });
 
   return schema.validate(data);

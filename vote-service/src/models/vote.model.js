@@ -1,15 +1,15 @@
 const SHA256 = require('crypto-js/sha256');
-const { Schema, model } = require('mongoose');
 const encryption = require('mongoose-encryption');
+const { Schema, model, Types } = require('mongoose');
 const mongoosePaginate = require('mongoose-paginate-v2');
 
 const subDocOptions = { minimize: false, _id: false, id: false };
 
 const VoteData = new Schema(
   {
-    party: { type: Schema.Types.ObjectId, ref: 'Party', required: true },
-    election: { type: Schema.Types.ObjectId, ref: 'Election', required: true },
-    contestants: [{ type: Schema.Types.ObjectId, ref: 'Contestant', required: true }],
+    party: { type: Types.ObjectId, ref: 'Party', required: true },
+    election: { type: Types.ObjectId, ref: 'Election', required: true },
+    contestants: [{ type: Types.ObjectId, ref: 'Contestant', required: true }],
   },
   subDocOptions
 );
@@ -22,7 +22,7 @@ const VoteSchema = new Schema(
     timestamp: { type: Number, required: true, immutable: true },
     previousHash: { type: String, default: '', immutable: true },
     index: { type: Number, required: true, min: 0, immutable: true },
-    election: { type: Schema.Types.ObjectId, ref: 'Election', required: true },
+    election: { type: Types.ObjectId, ref: 'Election', required: true },
   },
   { minimize: false, collection: 'votes' }
 );

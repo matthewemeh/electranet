@@ -9,7 +9,7 @@ const User = require('../models/user.model');
 const { logger } = require('../utils/logger.utils');
 const { sendEmail } = require('../utils/email.utils');
 const AdminToken = require('../models/admin-token.model');
-const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
+const { APIError } = require('../middlewares/error.middlewares');
 const {
   validateGetUsers,
   validateAdminInvite,
@@ -40,8 +40,7 @@ const getUsers = async (req, res) => {
   }
 
   const { role: adminRole } = req.user;
-  const { page, limit, ...docQuery } = value;
-  const { delimitationCode, email, firstName, lastName, role } = docQuery;
+  const { page, limit, delimitationCode, email, firstName, lastName, role } = value;
 
   // check cache for users
   const usersCacheKey = getUsersKey(
@@ -65,10 +64,23 @@ const getUsers = async (req, res) => {
   }
 
   // remove undefined fields
-  const rawFilters = { delimitationCode, email, firstName, lastName };
-  const paginationFilters = Object.fromEntries(
-    Object.entries(rawFilters).filter(([_, v]) => v !== undefined)
-  );
+  const paginationFilters = {};
+  if (delimitationCode) {
+    paginationFilters.delimitationCode = delimitationCode;
+  }
+
+  if (firstName) {
+    paginationFilters.firstName = firstName;
+  }
+
+  if (lastName) {
+    paginationFilters.lastName = lastName;
+  }
+
+  if (email) {
+    paginationFilters['email.value'] = email;
+  }
+
   if (adminRole === ROLES.SUPER_ADMIN) {
     /* 
       if user is the Super Admin, then make sure his/her user data is not fetched
@@ -104,14 +116,14 @@ const inviteAdmin = async (req, res) => {
   logger.info('Invite Admin endpoint called');
 
   // validate the request body
-  const { error } = validateAdminInvite(req.body);
+  const { error, value: reqBody } = validateAdminInvite(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { _id } = req.user;
-  const { expiresAt, userID } = req.body;
+  const { expiresAt, userID } = reqBody;
 
   // check that super admin is not inviting himself/herself
   if (_id == userID) {
@@ -175,14 +187,14 @@ const modifyAdminToken = async (req, res) => {
   logger.info('Modify Admin Rights endpoint called');
 
   // validate the request body
-  const { error } = validateModifyToken(req.body);
+  const { error, value: reqBody } = validateModifyToken(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { id } = req.params;
-  const { expiresAt, statusCode } = req.body;
+  const { expiresAt, statusCode } = reqBody;
 
   // check that admin token exists
   const adminToken = await AdminToken.findById(id);
@@ -269,9 +281,4 @@ const getAdminTokens = async (req, res) => {
   });
 };
 
-module.exports = {
-  getUsers: asyncHandler(getUsers),
-  inviteAdmin: asyncHandler(inviteAdmin),
-  getAdminTokens: asyncHandler(getAdminTokens),
-  modifyAdminToken: asyncHandler(modifyAdminToken),
-};
+module.exports = { getUsers, inviteAdmin, getAdminTokens, modifyAdminToken };

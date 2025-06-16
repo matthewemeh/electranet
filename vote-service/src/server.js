@@ -14,7 +14,6 @@ const { configureRatelimit } = require('./config/ratelimit.config');
 const { globalErrorHandler } = require('./middlewares/error.middlewares');
 const { requestLogger } = require('./middlewares/request-logger.middlewares');
 const { configureRatelimitRedis } = require('./config/ratelimit-redis.config');
-const { notFound, methodNotAllowed } = require('./middlewares/endpoint.middlewares');
 
 const app = express();
 
@@ -50,12 +49,6 @@ app.use(configureRatelimit(redisClient));
 
 // Routes
 app.use('/api/votes', useRedis(redisClient), voteRoutes);
-
-// handle method not allowed for each route
-app.use(methodNotAllowed);
-
-// catch-all route for undefined endpoints
-app.use(notFound);
 
 // error handler
 app.use(globalErrorHandler);

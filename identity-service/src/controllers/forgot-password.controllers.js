@@ -9,8 +9,8 @@ const User = require('../models/user.model');
 const { logger } = require('../utils/logger.utils');
 const { sendOTP, verifyOTP } = require('../utils/otp.utils');
 const RefreshToken = require('../models/refresh-token.model');
+const { APIError } = require('../middlewares/error.middlewares');
 const { sendNotification } = require('../utils/notification.utils');
-const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
 const {
   validateVerifyOTP,
   validateResetPassword,
@@ -32,13 +32,13 @@ const forgotPasswordInitiate = async (req, res) => {
   logger.info('Forgot Password Initiation endpoint called');
 
   // validate the request body
-  const { error } = validateForgotPasswordInitiate(req.body);
+  const { error, value: reqBody } = validateForgotPasswordInitiate(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { email } = req.body;
+  const { email } = reqBody;
 
   // check if user exists
   const userCacheKey = getUserKey(email);
@@ -67,13 +67,13 @@ const verifyOtp = async (req, res) => {
   logger.info('Forgot Password OTP Verification endpoint called');
 
   // validate the request body
-  const { error } = validateVerifyOTP(req.body);
+  const { error, value: reqBody } = validateVerifyOTP(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { email, otp } = req.body;
+  const { email, otp } = reqBody;
 
   // check if user exists
   const userCacheKey = getUserKey(email);
@@ -111,13 +111,13 @@ const resetPassword = async (req, res) => {
   logger.info('Reset Password endpoint called');
 
   // validate the request body
-  const { error } = validateResetPassword(req.body);
+  const { error, value: reqBody } = validateResetPassword(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { email, password, resetToken } = req.body;
+  const { email, password, resetToken } = reqBody;
 
   // fetch reset token record from cache
   const tokenCacheKey = getTokenKey(email);
@@ -167,8 +167,4 @@ const resetPassword = async (req, res) => {
     .json({ success: true, message: 'Password reset successfully', data: null });
 };
 
-module.exports = {
-  verifyOtp: asyncHandler(verifyOtp),
-  resetPassword: asyncHandler(resetPassword),
-  forgotPasswordInitiate: asyncHandler(forgotPasswordInitiate),
-};
+module.exports = { verifyOtp, resetPassword, forgotPasswordInitiate };

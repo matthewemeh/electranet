@@ -1,10 +1,10 @@
-const { Schema, model } = require('mongoose');
+const { Schema, model, Types } = require('mongoose');
 
 const ElectionSchema = new Schema(
   {
     name: { type: String, required: true },
     delimitationCode: { type: String, default: '' },
-    contestants: [{ type: Schema.Types.ObjectId, ref: 'Contestant' }],
+    contestants: [{ type: Types.ObjectId, ref: 'Contestant' }],
     endTime: {
       type: Date,
       required: true,

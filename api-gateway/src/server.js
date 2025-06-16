@@ -16,7 +16,7 @@ const { validateApiKey } = require('./middlewares/auth.middlewares');
 const { urlVersioning } = require('./middlewares/version.middlewares');
 const { globalErrorHandler } = require('./middlewares/error.middlewares');
 const { requestLogger } = require('./middlewares/request-logger.middlewares');
-const { notFound, methodNotAllowed } = require('./middlewares/endpoint.middlewares');
+const { notFound, methodChecker } = require('./middlewares/endpoint.middlewares');
 
 const app = express();
 
@@ -220,10 +220,10 @@ const faceIdServiceProxy = proxy(FACE_ID_SERVICE_URL, {
 });
 app.use('/v1/face-id', validateApiKey, faceIdServiceProxy);
 
-// handle method not allowed for each route
-app.use(methodNotAllowed);
+// handle unallowed methods for each route
+app.use(methodChecker);
 
-// catch-all route for undefined endpoints
+// catch all route for undefined endpoints
 app.use(notFound);
 
 // error handler

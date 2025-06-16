@@ -1,7 +1,7 @@
 const { StatusCodes } = require('http-status-codes');
 
 const { logger } = require('../utils/logger.utils');
-const { asyncHandler, APIError } = require('./error.middlewares');
+const { APIError } = require('./error.middlewares');
 
 const validateApiKey = (req, res, next) => {
   const apiKey = req.headers['x-api-key'];
@@ -14,4 +14,4 @@ const validateApiKey = (req, res, next) => {
   next();
 };
 
-module.exports = { validateApiKey: asyncHandler(validateApiKey) };
+module.exports = { validateApiKey };

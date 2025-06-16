@@ -1,4 +1,4 @@
-const { Schema, model } = require('mongoose');
+const { Schema, model, Types } = require('mongoose');
 
 const ContestantSchema = new Schema(
   {
@@ -8,8 +8,8 @@ const ContestantSchema = new Schema(
     firstName: { type: String, required: true },
     stateOfOrigin: { type: String, required: true },
     profileImageUrl: { type: String, required: true },
-    party: { type: Schema.Types.ObjectId, ref: 'Party' },
-    election: { type: Schema.Types.ObjectId, ref: 'Election' },
+    party: { type: Types.ObjectId, ref: 'Party' },
+    election: { type: Types.ObjectId, ref: 'Election' },
     gender: { type: String, required: true, uppercase: true, enum: ['MALE', 'FEMALE'] },
   },
   { minimize: false, timestamps: true, collection: 'contestants' }

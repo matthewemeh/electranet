@@ -5,7 +5,6 @@ const { APIError } = require('../middlewares/error.middlewares');
 
 /**
  * Function to send an email using the configured transporter
- * Make sure to use this utility function ONLY inside a function that is wrapped with asyncHandler
  * to handle errors properly.
  * @param {string} email user email to be addressed
  * @param {string} subject subject of email

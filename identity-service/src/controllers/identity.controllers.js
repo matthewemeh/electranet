@@ -7,8 +7,8 @@ const { logger } = require('../utils/logger.utils');
 const { encrypt } = require('../utils/encrypt.utils');
 const { generateTokens } = require('../utils/token.utils');
 const RefreshToken = require('../models/refresh-token.model');
+const { APIError } = require('../middlewares/error.middlewares');
 const { fetchData, getUserKey } = require('../utils/redis.utils');
-const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
 const {
   validateLogin,
   validateLogout,
@@ -22,13 +22,13 @@ const {
 const login = async (req, res) => {
   logger.info('Login endpoint called');
 
-  const { error } = validateLogin(req.body);
+  const { error, value: reqBody } = validateLogin(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { email, password } = req.body;
+  const { email, password } = reqBody;
 
   const userCacheKey = getUserKey(email);
   const user = await fetchData(userCacheKey, { 'email.value': email }, User, req.redisClient);
@@ -58,13 +58,13 @@ const login = async (req, res) => {
 const getRefreshToken = async (req, res) => {
   logger.info('Refresh Token endpoint called');
 
-  const { error } = validateRefreshToken(req.body);
+  const { error, value: reqBody } = validateRefreshToken(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const refreshToken = encrypt(req.body.refreshToken);
+  const refreshToken = encrypt(reqBody.refreshToken);
 
   // check if token exists and hasn't expired
   const token = await RefreshToken.findOne({ token: refreshToken }).populate('user');
@@ -97,13 +97,13 @@ const getRefreshToken = async (req, res) => {
 const logout = async (req, res) => {
   logger.info('Logout endpoint called');
 
-  const { error } = validateLogout(req.body);
+  const { error, value: reqBody } = validateLogout(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const refreshToken = encrypt(req.body.refreshToken);
+  const refreshToken = encrypt(reqBody.refreshToken);
 
   const result = await RefreshToken.deleteOne({ token: refreshToken });
   if (!result.deletedCount) {
@@ -115,8 +115,4 @@ const logout = async (req, res) => {
   res.status(StatusCodes.OK).json({ success: true, message: 'Logout successful', data: null });
 };
 
-module.exports = {
-  login: asyncHandler(login),
-  logout: asyncHandler(logout),
-  getRefreshToken: asyncHandler(getRefreshToken),
-};
+module.exports = { login, logout, getRefreshToken };

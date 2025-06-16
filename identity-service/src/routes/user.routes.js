@@ -1,5 +1,6 @@
 const router = require('express').Router();
 
+const { isValidID } = require('../middlewares/mongoose.middlewares');
 const {
   verifyToken,
   validateAuthKey,
@@ -25,6 +26,6 @@ router.post('/invite', inviteAdmin);
 
 router.get('/tokens', getAdminTokens);
 
-router.patch('/tokens/:id', modifyAdminToken);
+router.patch('/tokens/:id', isValidID, modifyAdminToken);
 
 module.exports = router;

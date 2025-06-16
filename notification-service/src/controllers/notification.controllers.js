@@ -4,8 +4,8 @@ const { StatusCodes } = require('http-status-codes');
 
 const { logger } = require('../utils/logger.utils');
 const Notification = require('../models/notification.model');
+const { APIError } = require('../middlewares/error.middlewares');
 const { validateGetNotifications } = require('../utils/validation.utils');
-const { APIError, asyncHandler } = require('../middlewares/error.middlewares');
 const { redisCacheExpiry, getNotificationsKey } = require('../utils/redis.utils');
 
 /**
@@ -68,4 +68,4 @@ const getNotifications = async (req, res) => {
   });
 };
 
-module.exports = { getNotifications: asyncHandler(getNotifications) };
+module.exports = { getNotifications };

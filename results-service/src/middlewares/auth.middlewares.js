@@ -4,8 +4,8 @@ const { verify } = require('jsonwebtoken');
 const { StatusCodes } = require('http-status-codes');
 
 const User = require('../models/user.model');
+const { APIError } = require('./error.middlewares');
 const { logger } = require('../utils/logger.utils');
-const { asyncHandler, APIError } = require('./error.middlewares');
 const { fetchData, getUserKey } = require('../utils/redis.utils');
 
 /**
@@ -69,7 +69,4 @@ const verifyToken = async (req, res, next) => {
   next();
 };
 
-module.exports = {
-  verifyToken: asyncHandler(verifyToken),
-  validateAuthKey: asyncHandler(validateAuthKey),
-};
+module.exports = { verifyToken, validateAuthKey };
