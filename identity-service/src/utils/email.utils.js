@@ -1,5 +1,6 @@
 const { StatusCodes } = require('http-status-codes');
 
+const { logger } = require('./logger.utils');
 const { transporter } = require('../config/email.config');
 const { APIError } = require('../middlewares/error.middlewares');
 
@@ -26,11 +27,22 @@ const sendEmail = async (email, subject, text, html) => {
     throw new APIError('Could not find "text" or "html" field', StatusCodes.BAD_REQUEST);
   }
 
-  transporter.sendMail(mailOptions, (error, info) => {
-    if (error) {
-      throw error;
-    }
-  });
+  try {
+    // Await the transporter using a Promise wrapper
+    await new Promise((resolve, reject) => {
+      transporter.sendMail(mailOptions, (err, info) => {
+        if (err) return reject(err);
+        resolve(info);
+      });
+    });
+  } catch (err) {
+    logger.error('Failed to send email');
+    throw new APIError(
+      `Failed to send email: ${err.message}`,
+      StatusCodes.INTERNAL_SERVER_ERROR,
+      err
+    );
+  }
 };
 
 module.exports = { sendEmail };

@@ -130,7 +130,7 @@ const resetPassword = async (req, res) => {
   const resetTokenMatches = await verify(token, resetToken);
   if (!resetTokenMatches) {
     logger.error('Invalid reset token!');
-    throw new APIError('Invalid reset token!', StatusCodes.FORBIDDEN);
+    throw new APIError('Invalid reset token!', StatusCodes.BAD_REQUEST);
   }
 
   // check if user exists
@@ -142,7 +142,7 @@ const resetPassword = async (req, res) => {
   }
 
   // reset (update) user's password
-  user.password = password;
+  await user.setPassword(password);
   await user.save();
 
   // cache updated user details

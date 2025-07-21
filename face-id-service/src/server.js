@@ -34,7 +34,7 @@ app.use(configureCors());
 app.use(express.json({ limit: '1mb' }));
 app.use(requestLogger);
 
-const healthCheckRateLimit = Number(HEALTH_CHECK_RATE_LIMIT) || 190;
+const healthCheckRateLimit = Number(HEALTH_CHECK_RATE_LIMIT) || 300;
 const healthCheckRateLimiter = configureRatelimit(redisClient, healthCheckRateLimit);
 app.get('/health', healthCheckRateLimiter, (req, res) => {
   logger.info('Health check successful');
@@ -42,7 +42,7 @@ app.get('/health', healthCheckRateLimiter, (req, res) => {
 });
 
 // DDoS protection and rate limiting
-app.use(configureRatelimitRedis(redisClient));
+app.use(configureRatelimitRedis(redisClient, 300, 900));
 
 // apply this sensitiveEndpointsLimiter to our routes
 app.use(configureRatelimit(redisClient));

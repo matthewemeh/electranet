@@ -5,14 +5,16 @@ const { StatusCodes, ReasonPhrases } = require('http-status-codes');
 const { logger } = require('../utils/logger.utils');
 
 /**
- * @param {Redis} redisClient
+ * @param {Redis} redisClient - redis client instance
+ * @param {number} points - number of requests that can be made to redis client
+ * @param {number} duration - the time window within which the requests are made (in seconds)
  */
-const configureRatelimitRedis = redisClient => {
+const configureRatelimitRedis = (redisClient, points = 10, duration = 60) => {
   const rateLimiter = new RateLimiterRedis({
     storeClient: redisClient,
     keyPrefix: 'middleware',
-    points: 10, // user/client/IP address can make 10 requests...
-    duration: 60, // ...in 60 seconds
+    points,
+    duration,
   });
 
   return (req, res, next) => {

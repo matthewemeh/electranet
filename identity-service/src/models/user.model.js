@@ -43,25 +43,21 @@ UserSchema.index(
   { unique: true, partialFilterExpression: { vin: { $exists: true, $gt: '' } } }
 );
 
-UserSchema.pre('save', async function (next) {
-  // hash the password before saving to DB
-  if (this.isModified('password')) {
-    try {
-      this.password = await hash(this.password);
-    } catch (error) {
-      return next(error);
-    }
-  }
+/**
+ * Updates user's password hash based on `newPassword`
+ * @param {string} newPassword the password to to hashed
+ */
+UserSchema.methods.setPassword = async function (newPassword) {
+  this.password = await hash(newPassword);
+};
 
-  // encrypt the vin before saving to DB
-  if (this.isModified('vin')) {
-    try {
-      this.vin = encrypt(this.vin);
-    } catch (error) {
-      return next(error);
-    }
-  }
-});
+/**
+ * Updates user's vin based on `newVin`
+ * @param {string} newVin the vin to to encrypted
+ */
+UserSchema.methods.setVin = function (newVin) {
+  this.vin = encrypt(newVin);
+};
 
 /**
  * Validates a user's login credentials

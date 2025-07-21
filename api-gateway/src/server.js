@@ -4,7 +4,6 @@ const YAML = require('yamljs');
 const helmet = require('helmet');
 const express = require('express');
 const { Redis } = require('ioredis');
-const proxy = require('express-http-proxy');
 const swaggerUI = require('swagger-ui-express');
 const { StatusCodes } = require('http-status-codes');
 
@@ -17,6 +16,16 @@ const { urlVersioning } = require('./middlewares/version.middlewares');
 const { globalErrorHandler } = require('./middlewares/error.middlewares');
 const { requestLogger } = require('./middlewares/request-logger.middlewares');
 const { notFound, methodChecker } = require('./middlewares/endpoint.middlewares');
+const {
+  voteServiceProxy,
+  faceIdServiceProxy,
+  resultServiceProxy,
+  electionServiceProxy,
+  identityServiceProxy,
+  notificationServiceProxy,
+  faceIdServiceMultipartProxy,
+  electionServiceMultipartProxy,
+} = require('./config/proxy.config');
 
 const app = express();
 
@@ -28,14 +37,8 @@ const {
   FACE_ID_SERVICE_URL,
   ELECTION_SERVICE_URL,
   IDENTITY_SERVICE_URL,
-  VOTE_SERVICE_AUTH_KEY,
   HEALTH_CHECK_RATE_LIMIT,
   NOTIFICATION_SERVICE_URL,
-  RESULTS_SERVICE_AUTH_KEY,
-  FACE_ID_SERVICE_AUTH_KEY,
-  ELECTION_SERVICE_AUTH_KEY,
-  IDENTITY_SERVICE_AUTH_KEY,
-  NOTIFICATION_SERVICE_AUTH_KEY,
 } = process.env;
 
 // initialize Redis client
@@ -49,7 +52,7 @@ app.use(configureCors());
 app.use(express.json({ limit: '1mb' }));
 app.use(requestLogger);
 
-const healthCheckRateLimit = Number(HEALTH_CHECK_RATE_LIMIT) || 190;
+const healthCheckRateLimit = Number(HEALTH_CHECK_RATE_LIMIT) || 300;
 const healthCheckRateLimiter = configureRatelimit(redisClient, healthCheckRateLimit);
 app.get('/health', healthCheckRateLimiter, (req, res) => {
   logger.info('Health check successful');
@@ -57,7 +60,9 @@ app.get('/health', healthCheckRateLimiter, (req, res) => {
 });
 
 // IP-based rate limiting for sensitive endpoints
-app.use(configureRatelimit(redisClient));
+const mainRatelimiter = configureRatelimit(redisClient, 200);
+const otpRatelimiter = configureRatelimit(redisClient, 15, 300_000);
+app.use('/v1/otp/send', otpRatelimiter);
 
 const proxyOptions = {
   proxyReqPathResolver: req => {
@@ -86,139 +91,34 @@ app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerDocument));
 app.use(urlVersioning('v1'));
 
 // setting up proxy for identity services
-const identityServiceProxy = proxy(IDENTITY_SERVICE_URL, {
-  ...proxyOptions,
-  proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-    proxyReqOpts.headers['Content-Type'] = 'application/json';
-    proxyReqOpts.headers['x-auth-key'] = IDENTITY_SERVICE_AUTH_KEY;
-    return proxyReqOpts;
-  },
-  userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
-    logger.info(`Response received from Identity service: ${proxyRes.statusCode}`);
-    return proxyResData;
-  },
-});
-app.use('/v1/otp', validateApiKey, identityServiceProxy);
-app.use('/v1/auth', validateApiKey, identityServiceProxy);
-app.use('/v1/users', validateApiKey, identityServiceProxy);
+app.use('/v1/otp', mainRatelimiter, validateApiKey, identityServiceProxy);
+app.use('/v1/auth', mainRatelimiter, validateApiKey, identityServiceProxy);
+app.use('/v1/users', mainRatelimiter, validateApiKey, identityServiceProxy);
 
 // setting up proxy for election services
-const electionServiceMultipartProxy = proxy(ELECTION_SERVICE_URL, {
-  ...proxyOptions,
-  parseReqBody: false,
-  proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-    proxyReqOpts.headers['x-auth-key'] = ELECTION_SERVICE_AUTH_KEY;
-    return proxyReqOpts;
-  },
-  userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
-    logger.info(`Response received from Election service: ${proxyRes.statusCode}`);
-    return proxyResData;
-  },
-});
-app.use('/v1/parties/add', validateApiKey, electionServiceMultipartProxy);
-app.use('/v1/parties/edit', validateApiKey, electionServiceMultipartProxy);
-app.use('/v1/contestants/add', validateApiKey, electionServiceMultipartProxy);
-app.use('/v1/contestants/edit', validateApiKey, electionServiceMultipartProxy);
+app.use('/v1/parties/add', mainRatelimiter, validateApiKey, electionServiceMultipartProxy);
+app.use('/v1/parties/edit', mainRatelimiter, validateApiKey, electionServiceMultipartProxy);
+app.use('/v1/contestants/add', mainRatelimiter, validateApiKey, electionServiceMultipartProxy);
+app.use('/v1/contestants/edit', mainRatelimiter, validateApiKey, electionServiceMultipartProxy);
 
-const electionServiceProxy = proxy(ELECTION_SERVICE_URL, {
-  ...proxyOptions,
-  proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-    proxyReqOpts.headers['Content-Type'] = 'application/json';
-    proxyReqOpts.headers['x-auth-key'] = ELECTION_SERVICE_AUTH_KEY;
-    return proxyReqOpts;
-  },
-  userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
-    logger.info(`Response received from Election service: ${proxyRes.statusCode}`);
-    return proxyResData;
-  },
-});
-app.use('/v1/parties', validateApiKey, electionServiceProxy);
-app.use('/v1/elections', validateApiKey, electionServiceProxy);
-app.use('/v1/contestants', validateApiKey, electionServiceProxy);
+app.use('/v1/parties', mainRatelimiter, validateApiKey, electionServiceProxy);
+app.use('/v1/elections', mainRatelimiter, validateApiKey, electionServiceProxy);
+app.use('/v1/contestants', mainRatelimiter, validateApiKey, electionServiceProxy);
 
 // setting up proxy for vote services
-app.use(
-  '/v1/votes',
-  validateApiKey,
-  proxy(VOTE_SERVICE_URL, {
-    ...proxyOptions,
-    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-      proxyReqOpts.headers['Content-Type'] = 'application/json';
-      proxyReqOpts.headers['x-auth-key'] = VOTE_SERVICE_AUTH_KEY;
-      return proxyReqOpts;
-    },
-    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
-      logger.info(`Response received from Vote service: ${proxyRes.statusCode}`);
-      return proxyResData;
-    },
-  })
-);
+app.use('/v1/votes', mainRatelimiter, validateApiKey, voteServiceProxy);
 
 // setting up proxy for results services
-app.use(
-  '/v1/results',
-  validateApiKey,
-  proxy(RESULTS_SERVICE_URL, {
-    ...proxyOptions,
-    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-      proxyReqOpts.headers['Content-Type'] = 'application/json';
-      proxyReqOpts.headers['x-auth-key'] = RESULTS_SERVICE_AUTH_KEY;
-      return proxyReqOpts;
-    },
-    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
-      logger.info(`Response received from Results service: ${proxyRes.statusCode}`);
-      return proxyResData;
-    },
-  })
-);
+app.use('/v1/results', mainRatelimiter, validateApiKey, resultServiceProxy);
 
 // setting up proxy for notification services
-const notificationServiceProxy = proxy(NOTIFICATION_SERVICE_URL, {
-  ...proxyOptions,
-  proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-    proxyReqOpts.headers['Content-Type'] = 'application/json';
-    proxyReqOpts.headers['x-auth-key'] = NOTIFICATION_SERVICE_AUTH_KEY;
-    return proxyReqOpts;
-  },
-  userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
-    logger.info(`Response received from Notification service: ${proxyRes.statusCode}`);
-    return proxyResData;
-  },
-});
-app.use('/v1/logs', validateApiKey, notificationServiceProxy);
-app.use('/v1/notifications', validateApiKey, notificationServiceProxy);
+app.use('/v1/logs', mainRatelimiter, validateApiKey, notificationServiceProxy);
+app.use('/v1/notifications', mainRatelimiter, validateApiKey, notificationServiceProxy);
 
 // setting up proxy for Face ID services
-app.use(
-  '/v1/face-id/register',
-  validateApiKey,
-  proxy(FACE_ID_SERVICE_URL, {
-    ...proxyOptions,
-    parseReqBody: false,
-    proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-      proxyReqOpts.headers['x-auth-key'] = FACE_ID_SERVICE_AUTH_KEY;
-      return proxyReqOpts;
-    },
-    userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
-      logger.info(`Response received from Face ID service: ${proxyRes.statusCode}`);
-      return proxyResData;
-    },
-  })
-);
+app.use('/v1/face-id/register', mainRatelimiter, validateApiKey, faceIdServiceMultipartProxy);
 
-const faceIdServiceProxy = proxy(FACE_ID_SERVICE_URL, {
-  ...proxyOptions,
-  proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-    proxyReqOpts.headers['Content-Type'] = 'application/json';
-    proxyReqOpts.headers['x-auth-key'] = FACE_ID_SERVICE_AUTH_KEY;
-    return proxyReqOpts;
-  },
-  userResDecorator: (proxyRes, proxyResData, userReq, userRes) => {
-    logger.info(`Response received from Face ID service: ${proxyRes.statusCode}`);
-    return proxyResData;
-  },
-});
-app.use('/v1/face-id', validateApiKey, faceIdServiceProxy);
+app.use('/v1/face-id', mainRatelimiter, validateApiKey, faceIdServiceProxy);
 
 // handle unallowed methods for each route
 app.use(methodChecker);

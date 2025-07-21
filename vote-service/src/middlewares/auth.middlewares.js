@@ -3,10 +3,10 @@ const { Redis } = require('ioredis');
 const { verify } = require('jsonwebtoken');
 const { StatusCodes } = require('http-status-codes');
 
-const { ROLES } = require('../constants');
 const User = require('../models/user.model');
 const { logger } = require('../utils/logger.utils');
 const { APIError } = require('./error.middlewares');
+const { ROLES, ERROR_CODES } = require('../constants');
 const { fetchData, getUserKey } = require('../utils/redis.utils');
 
 /**
@@ -39,7 +39,12 @@ const verifyToken = async (req, res, next) => {
 
   if (!token) {
     logger.error('An authorization token is required');
-    throw new APIError('An authorization token is required', StatusCodes.UNAUTHORIZED);
+    throw new APIError(
+      'An authorization token is required',
+      StatusCodes.UNAUTHORIZED,
+      null,
+      ERROR_CODES.MISSING_TOKEN
+    );
   }
 
   let decodedUser;
@@ -47,7 +52,12 @@ const verifyToken = async (req, res, next) => {
     decodedUser = verify(token, process.env.JWT_SECRET);
   } catch (error) {
     logger.error('Session expired', error);
-    throw new APIError('Session expired', StatusCodes.UNAUTHORIZED);
+    throw new APIError(
+      'Session expired',
+      StatusCodes.UNAUTHORIZED,
+      null,
+      ERROR_CODES.SESSION_EXPIRED
+    );
   }
 
   const userCacheKey = getUserKey(decodedUser.email);

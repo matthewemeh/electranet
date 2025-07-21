@@ -2,9 +2,9 @@ const express = require('express');
 const { Redis } = require('ioredis');
 const { StatusCodes } = require('http-status-codes');
 
-const { ROLES } = require('../constants');
 const User = require('../models/user.model');
 const { logger } = require('../utils/logger.utils');
+const { ERROR_CODES, ROLES } = require('../constants');
 const { generateTokens } = require('../utils/token.utils');
 const { sendOTP, verifyOTP } = require('../utils/otp.utils');
 const { APIError } = require('../middlewares/error.middlewares');
@@ -29,7 +29,7 @@ const registerUser = async (req, res) => {
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { email, ...body } = reqBody;
+  const { email, password, vin, ...body } = reqBody;
 
   // check if user already exists
   const userCacheKey = getUserKey(email);
@@ -50,7 +50,11 @@ const registerUser = async (req, res) => {
   // If VIN verification is successful, then user registration can proceed
   // else, the process is terminated.
 
-  user = await User.create({ ...body, role: ROLES.USER, email: { value: email } });
+  user = new User({ ...body, role: ROLES.USER, email: { value: email } });
+  await user.setPassword(password);
+  await user.setVin(vin);
+  await user.save();
+
   const tokens = await generateTokens(user);
 
   // cache user details
@@ -79,7 +83,7 @@ const registerAdmin = async (req, res) => {
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { email, role, ...body } = reqBody;
+  const { email, role, password, ...body } = reqBody;
 
   // check if user already exists
   const userCacheKey = getUserKey(email);
@@ -93,21 +97,31 @@ const registerAdmin = async (req, res) => {
   if (superAdmin && role === ROLES.SUPER_ADMIN) {
     // check to ensure only 1 super-admin exists always
     logger.error('Super Admin already exists');
-    throw new APIError('Super Admin already exists', StatusCodes.CONFLICT);
+    throw new APIError(
+      'Super Admin already exists',
+      StatusCodes.CONFLICT,
+      null,
+      ERROR_CODES.SUPER_ADMIN_REG_FAILED
+    );
   } else if (!superAdmin && role !== ROLES.SUPER_ADMIN) {
     // check that super admin has registered
     logger.warn('Super Admin must be registered');
     throw new APIError('Super Admin must be registered', StatusCodes.INTERNAL_SERVER_ERROR);
-  } else if (role === ROLES.SUPER_ADMIN && email !== process.env.SUPER_ADMIN_EMAIL) {
+  } else if (role === ROLES.SUPER_ADMIN && email !== process.env.SUPER_ADMIN_EMAIL.toLowerCase()) {
     // check that the registrant's email matches the expected super admin email if the user is registering as a super admin
     logger.error('You are not the Super Admin. Please contact developer');
     throw new APIError(
       'You are not the Super Admin. Please contact developer',
-      StatusCodes.BAD_REQUEST
+      StatusCodes.BAD_REQUEST,
+      null,
+      ERROR_CODES.SUPER_ADMIN_REG_FAILED
     );
   }
 
-  user = await User.create({ ...body, role, email: { value: email } });
+  user = new User({ ...body, role, email: { value: email } });
+  await user.setPassword(password);
+  await user.save();
+
   const tokens = await generateTokens(user);
 
   // cache user details

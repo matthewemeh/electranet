@@ -7,13 +7,15 @@ class APIError extends Error {
   /**
    * @param {string} message
    * @param {number} httpStatusCode
-   * @param {object} errors
+   * @param {object?} errors
+   * @param {string?} errorCode
    */
-  constructor(message, httpStatusCode, errors = null) {
+  constructor(message, httpStatusCode, errors, errorCode) {
     super(message);
     this.errors = errors;
     this.name = 'APIError';
     this.message = message;
+    this.errorCode = errorCode;
     this.httpStatusCode = httpStatusCode;
   }
 }
@@ -28,9 +30,12 @@ const globalErrorHandler = (error, req, res, next) => {
   if (error instanceof APIError) {
     // NB: Make sure to log errors/warnings (using logger) wherever you throw an APIError outside this file
     // For all other error types, the logger logs the error from here
-    return res
-      .status(error.httpStatusCode)
-      .json({ errors: error.errors, success: false, message: error.message });
+    return res.status(error.httpStatusCode).json({
+      success: false,
+      errors: error.errors,
+      message: error.message,
+      errorCode: error.errorCode,
+    });
   } else if (error.name === 'ValidationError') {
     const errorResponse = { errors: {}, success: false, message: error.message };
 

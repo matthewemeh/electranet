@@ -3,6 +3,7 @@ const { Redis } = require('ioredis');
 const { StatusCodes } = require('http-status-codes');
 
 const User = require('../models/user.model');
+const { ERROR_CODES } = require('../constants');
 const { logger } = require('../utils/logger.utils');
 const { encrypt } = require('../utils/encrypt.utils');
 const { generateTokens } = require('../utils/token.utils');
@@ -61,16 +62,37 @@ const getRefreshToken = async (req, res) => {
   const { error, value: reqBody } = validateRefreshToken(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
+    throw new APIError(
+      error.details[0].message,
+      StatusCodes.BAD_REQUEST,
+      null,
+      ERROR_CODES.MISSING_REFRESH_TOKEN
+    );
   }
 
   const refreshToken = encrypt(reqBody.refreshToken);
 
   // check if token exists and hasn't expired
   const token = await RefreshToken.findOne({ token: refreshToken }).populate('user');
-  if (!token || token.expiresAt < Date.now()) {
-    logger.error('Inavlid or expired refresh token');
-    throw new APIError('Inavlid or expired refresh token', StatusCodes.BAD_REQUEST);
+  if (!token) {
+    logger.error('Inavlid refresh token');
+    throw new APIError(
+      'Inavlid refresh token',
+      StatusCodes.BAD_REQUEST,
+      null,
+      ERROR_CODES.INVALID_REFRESH_TOKEN
+    );
+  } else if (token.expiresAt < Date.now()) {
+    // delete expired refresh token
+    await RefreshToken.deleteOne({ _id: token._id });
+
+    logger.error('Expired refresh token');
+    throw new APIError(
+      'Expired refresh token',
+      StatusCodes.BAD_REQUEST,
+      null,
+      ERROR_CODES.REFRESH_TOKEN_EXPIRED
+    );
   }
 
   // check if user exists
@@ -100,7 +122,12 @@ const logout = async (req, res) => {
   const { error, value: reqBody } = validateLogout(req.body ?? {});
   if (error) {
     logger.warn('Validation error', { message: error.details[0].message });
-    throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
+    throw new APIError(
+      error.details[0].message,
+      StatusCodes.BAD_REQUEST,
+      null,
+      ERROR_CODES.MISSING_REFRESH_TOKEN
+    );
   }
 
   const refreshToken = encrypt(reqBody.refreshToken);
@@ -108,7 +135,12 @@ const logout = async (req, res) => {
   const result = await RefreshToken.deleteOne({ token: refreshToken });
   if (!result.deletedCount) {
     logger.error('Invalid refresh token');
-    throw new APIError('Invalid refresh token', StatusCodes.BAD_REQUEST);
+    throw new APIError(
+      'Invalid refresh token',
+      StatusCodes.BAD_REQUEST,
+      null,
+      ERROR_CODES.INVALID_REFRESH_TOKEN
+    );
   }
 
   logger.info('Logout successful');

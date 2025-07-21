@@ -16,6 +16,7 @@ const configureRatelimit = (redisClient, maxRequests = 50, duration = 900_000) =
     windowMs: duration,
     legacyHeaders: false,
     standardHeaders: true,
+    validate: { trustProxy: true, xForwardedForHeader: true },
     handler: (req, res) => {
       logger.warn(`Sensitive endpoint rate limit exceeded for IP: ${req.ip}`);
       res
