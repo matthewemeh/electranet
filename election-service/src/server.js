@@ -47,7 +47,7 @@ app.get('/health', healthCheckRateLimiter, (req, res) => {
 app.use(configureRatelimitRedis(redisClient, 300, 900));
 
 // IP-based rate limiting for sensitive endpoints
-app.use(configureRatelimit(redisClient));
+app.use(configureRatelimit(redisClient, 200));
 
 // Routes
 app.use('/api/parties', useRedis(redisClient), partyRoutes);

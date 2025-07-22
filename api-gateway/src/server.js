@@ -64,22 +64,6 @@ const mainRatelimiter = configureRatelimit(redisClient, 200);
 const otpRatelimiter = configureRatelimit(redisClient, 15, 300_000);
 app.use('/v1/otp/send', otpRatelimiter);
 
-const proxyOptions = {
-  proxyReqPathResolver: req => {
-    return req.originalUrl.replace(/^\/v1/, '/api');
-  },
-  proxyErrorHandler: (err, res, next) => {
-    logger.error('Proxy error:', err.errors);
-    res
-      .status(StatusCodes.INTERNAL_SERVER_ERROR)
-      .json({ errors: null, success: false, message: `Internal server error: ${err.code}` });
-  },
-  proxyReqOptDecorator: (proxyReqOpts, srcReq) => {
-    proxyReqOpts.headers['Content-Type'] = 'application/json';
-    return proxyReqOpts;
-  },
-};
-
 app.get('/', (req, res) => {
   res.send('<h1>Electranet API</h1><a href="/api-docs">Documentation</a>');
 });

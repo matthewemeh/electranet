@@ -45,7 +45,7 @@ app.get('/health', healthCheckRateLimiter, (req, res) => {
 // DDoS protection and rate limiting
 app.use(configureRatelimitRedis(redisClient, 300, 900));
 
-app.use(configureRatelimit(redisClient));
+app.use(configureRatelimit(redisClient, 200));
 
 // Routes
 app.use('/api/logs', useRedis(redisClient), logRoutes);
