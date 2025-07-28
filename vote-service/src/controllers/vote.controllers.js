@@ -11,6 +11,7 @@ const { logger } = require('../utils/logger.utils');
 const Election = require('../models/election.model');
 const { sendEmail } = require('../utils/email.utils');
 const Contestant = require('../models/contestant.model');
+const ElectionVoted = require('../models/election-voted.model');
 const { APIError } = require('../middlewares/error.middlewares');
 const { sendNotification } = require('../utils/notification.utils');
 const { validateGetVotes, validateVerifyUserVote } = require('../utils/validation.utils');
@@ -126,8 +127,7 @@ const castVote = async (req, res) => {
   const vote = await Vote.create(votePayload);
 
   // update the user's voted elections
-  user.electionsVoted.push(electionID);
-  await user.save();
+  await ElectionVoted.create({ user: user._id, election: electionID });
 
   // update or set user cache
   const userCacheKey = getUserKey(user.email.value);

@@ -150,6 +150,13 @@ const inviteAdmin = async (req, res) => {
   try {
     // create new admin token for invitee
     await AdminToken.create({ expiresAt, user: userID });
+
+    // update user's invited status
+    user.isInvited = true;
+
+    // cache updated user details
+    await req.redisClient.setex(userCacheKey, redisCacheExpiry, JSON.stringify(user.toRaw()));
+    await user.save();
   } catch (error) {
     if (error.name === 'MongoServerError' && error.code === 11000) {
       error.customMessage = 'User has already been invited';

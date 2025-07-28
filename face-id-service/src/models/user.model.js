@@ -14,6 +14,7 @@ const EmailSchema = new Schema(
 
 const UserSchema = new Schema(
   {
+    isInvited: { type: Boolean },
     vin: { type: String, immutable: true },
     faceID: { type: Boolean, default: false },
     email: { type: EmailSchema, required: true },
@@ -24,7 +25,6 @@ const UserSchema = new Schema(
     address: { type: String, trim: true, immutable: true },
     occupation: { type: String, trim: true, immutable: true },
     lastName: { type: String, immutable: true, required: true },
-    electionsVoted: [{ type: Types.ObjectId, ref: 'Election' }],
     firstName: { type: String, immutable: true, required: true },
     gender: { type: String, immutable: true, enum: ['MALE', 'FEMALE'] },
     role: { type: String, immutable: true, enum: Object.values(ROLES), required: true },

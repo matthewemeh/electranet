@@ -47,7 +47,8 @@ const verifyVote = async (req, res, next) => {
   }
 
   // check if user has voted before
-  if (user.hasVoted(electionID)) {
+  const userHasVoted = await user.hasVoted(electionID);
+  if (userHasVoted) {
     throw new APIError('You have voted for this election already!', StatusCodes.BAD_REQUEST);
   }
 

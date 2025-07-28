@@ -1,6 +1,7 @@
 const { Schema, model, Types } = require('mongoose');
 
 const { ROLES } = require('../constants');
+const ElectionVoted = require('./election-voted.model');
 
 const subDocOptions = { minimize: false, _id: false, id: false };
 
@@ -14,6 +15,7 @@ const EmailSchema = new Schema(
 
 const UserSchema = new Schema(
   {
+    isInvited: { type: Boolean },
     vin: { type: String, immutable: true },
     faceID: { type: Boolean, default: false },
     email: { type: EmailSchema, required: true },
@@ -25,7 +27,6 @@ const UserSchema = new Schema(
     occupation: { type: String, trim: true, immutable: true },
     lastName: { type: String, immutable: true, required: true },
     firstName: { type: String, immutable: true, required: true },
-    electionsVoted: [{ type: Types.ObjectId, ref: 'Election' }],
     gender: { type: String, immutable: true, enum: ['MALE', 'FEMALE'] },
     role: { type: String, immutable: true, enum: Object.values(ROLES), required: true },
   },
@@ -44,13 +45,13 @@ UserSchema.virtual('fullName').get(function () {
 });
 
 /**
- * Checks if a user has already voted
+ * Checks if a user has already voted for an election
  * @param {string} electionID
  * @returns {boolean}
  */
-UserSchema.methods.hasVoted = function (electionID) {
-  const electionsVoted = new Set(this.electionsVoted.map(String));
-  return electionsVoted.has(electionID);
+UserSchema.methods.hasVoted = async function (electionID) {
+  const electionVoted = await ElectionVoted.findOne({ user: this._id, election: electionID });
+  return !!electionVoted;
 };
 
 /**

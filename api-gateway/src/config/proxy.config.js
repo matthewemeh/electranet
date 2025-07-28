@@ -1,6 +1,8 @@
 const proxy = require('express-http-proxy');
 const { StatusCodes } = require('http-status-codes');
 
+const { logger } = require('../utils/logger.utils');
+
 const {
   VOTE_SERVICE_URL,
   RESULTS_SERVICE_URL,
