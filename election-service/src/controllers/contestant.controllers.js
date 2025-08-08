@@ -3,20 +3,20 @@ const { Redis } = require('ioredis');
 const { StatusCodes } = require('http-status-codes');
 
 const Log = require('../models/log.model');
+const Party = require('../models/party.model');
 const supabase = require('../services/supabase');
 const { logger } = require('../utils/logger.utils');
-const Election = require('../models/election.model');
 const Contestant = require('../models/contestant.model');
 const { CONTESTANT_IMAGE_KEY } = require('../constants');
 const { APIError } = require('../middlewares/error.middlewares');
 const { getContestantImageKey } = require('../utils/party.utils');
+const ElectionContestant = require('../models/election-contestant.model');
 const {
   validateContestant,
   validateGetContestants,
   validateContestantUpdate,
 } = require('../utils/validation.utils');
 const {
-  deleteCacheKey,
   redisCacheExpiry,
   getContestantsKey,
   getElectionContestantsKey,
@@ -47,6 +47,15 @@ const addContestant = async (req, res) => {
       `"${CONTESTANT_IMAGE_KEY}" is missing in Multipart form data`,
       StatusCodes.BAD_REQUEST
     );
+  }
+
+  // check if given party exists
+  if (reqBody.party) {
+    const partyExists = await Party.findById(reqBody.party);
+    if (!partyExists) {
+      logger.error('Party does not exist');
+      throw new APIError('Party does not exist', StatusCodes.BAD_REQUEST);
+    }
   }
 
   const contestant = new Contestant(reqBody);
@@ -108,6 +117,15 @@ const updateContestant = async (req, res) => {
     throw new APIError('Contestant not found', StatusCodes.NOT_FOUND);
   }
 
+  // check if given party exists
+  if (reqBody.party) {
+    const partyExists = await Party.findById(reqBody.party);
+    if (!partyExists) {
+      logger.error('Party does not exist');
+      throw new APIError('Party does not exist', StatusCodes.BAD_REQUEST);
+    }
+  }
+
   // update non-file fields
   Object.assign(contestant, reqBody);
 
@@ -140,10 +158,6 @@ const updateContestant = async (req, res) => {
 
   // proceed to update contestant
   await contestant.save();
-
-  // clear election contestants cache
-  const contestantsCacheKey = getElectionContestantsKey(contestant.election);
-  await deleteCacheKey(contestantsCacheKey, req.redisClient);
 
   // create an event log
   await Log.create({
@@ -239,22 +253,20 @@ const getElectionContestants = async (req, res) => {
   }
 
   // fallback to DB
-  const election = await Election.findById(id)
-    .select('contestants -_id')
+  contestants = await ElectionContestant.find({ election: id })
+    .select('contestant -_id')
     .populate({
-      path: 'contestants',
-      select: '-election -createdAt -updatedAt -__v',
+      path: 'contestant',
+      select: '-createdAt -updatedAt -__v',
       populate: { path: 'party', select: '-createdAt -updatedAt -__v' },
     });
-  if (!election) {
-    logger.info('Election not found');
-    throw new APIError('Election not found', StatusCodes.NOT_FOUND);
-  }
 
-  contestants = election.contestants.filter(({ isDeleted }) => !isDeleted);
+  contestants = contestants
+    .filter(({ contestant }) => !contestant.isDeleted)
+    .map(({ contestant }) => contestant);
 
   // cache fetched election contestants
-  await req.redisClient.setex(contestantsCacheKey, 1800, JSON.stringify(contestants));
+  await req.redisClient.setex(contestantsCacheKey, redisCacheExpiry, JSON.stringify(contestants));
 
   logger.info('Contestants fetched successfully');
   res.status(StatusCodes.OK).json({

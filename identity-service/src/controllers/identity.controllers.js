@@ -47,9 +47,21 @@ const login = async (req, res) => {
   const tokens = await generateTokens(user);
 
   logger.info('Login successful');
-  res
-    .status(StatusCodes.OK)
-    .json({ success: true, message: 'Login successful', data: { user, tokens } });
+  res.status(StatusCodes.OK).json({
+    success: true,
+    message: 'Login successful',
+    data: {
+      user: {
+        role: user.role,
+        email: user.email.value,
+        lastName: user.lastName,
+        firstName: user.firstName,
+        middleName: user.middleName,
+        emailVerified: user.email.verified,
+      },
+      tokens,
+    },
+  });
 };
 
 /**

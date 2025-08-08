@@ -5,7 +5,6 @@ const ElectionSchema = new Schema(
   {
     name: { type: String, required: true },
     delimitationCode: { type: String, default: '' },
-    contestants: [{ type: Types.ObjectId, ref: 'Contestant' }],
     endTime: {
       type: Date,
       required: true,

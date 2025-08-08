@@ -7,7 +7,14 @@ const { logger } = require('../utils/logger.utils');
 const Election = require('../models/election.model');
 const Contestant = require('../models/contestant.model');
 const { APIError } = require('../middlewares/error.middlewares');
-const { getElectionsKey, redisCacheExpiry, getUserElectionsKey } = require('../utils/redis.utils');
+const ElectionContestant = require('../models/election-contestant.model');
+const {
+  deleteCacheKey,
+  getElectionsKey,
+  redisCacheExpiry,
+  getUserElectionsKey,
+  getElectionContestantsKey,
+} = require('../utils/redis.utils');
 const {
   validateElection,
   validateGetElections,
@@ -237,8 +244,8 @@ const deleteElection = async (req, res) => {
   // delete the election
   await Election.deleteOne({ _id: id });
 
-  // remove the contestants' election field
-  await Contestant.updateMany({ election: id }, { $unset: { election: '' } });
+  // remove all booked election contestants
+  await ElectionContestant.deleteMany({ election: id });
 
   // create an event log
   await Log.create({
@@ -280,7 +287,7 @@ const addContestant = async (req, res) => {
     throw new APIError('Contestant not registered under a party', StatusCodes.BAD_REQUEST);
   }
 
-  // check if election exists, has not started and contestant hasn't been added already
+  // check if election exists and has not started
   const election = await Election.findById(id);
   if (!election) {
     logger.error('Election not found');
@@ -288,18 +295,24 @@ const addContestant = async (req, res) => {
   } else if (election.hasStarted) {
     logger.error('Election has already commenced');
     throw new APIError('Election has already commenced', StatusCodes.BAD_REQUEST);
-  } else if (election.contestants.includes(contestantID)) {
-    logger.error('Contestant already registered for this election');
-    throw new APIError('Contestant already registered for this election', StatusCodes.BAD_REQUEST);
   }
 
-  // add contestant to election
-  election.contestants.push(contestantID);
-  await election.save();
+  try {
+    await ElectionContestant.create({
+      election: id,
+      party: contestant.party,
+      contestant: contestantID,
+    });
+  } catch (error) {
+    if (error.name === 'MongoServerError' && error.code === 11000) {
+      error.customMessage = 'Contestant already registered for this election!';
+      throw error;
+    }
+  }
 
-  // update contestant's participating election
-  contestant.election = id;
-  await contestant.save();
+  // clear election contestants cache
+  const contestantsCacheKey = getElectionContestantsKey(id);
+  await deleteCacheKey(contestantsCacheKey, req.redisClient);
 
   // create an event log
   await Log.create({
@@ -338,7 +351,7 @@ const removeContestant = async (req, res) => {
     throw new APIError('Contestant not found', StatusCodes.NOT_FOUND);
   }
 
-  // check if election exists, has not started and contestant is registered
+  // check if election exists and has not started
   const election = await Election.findById(id);
   if (!election) {
     logger.error('Election not found');
@@ -346,20 +359,18 @@ const removeContestant = async (req, res) => {
   } else if (election.hasStarted) {
     logger.error('Election has already commenced');
     throw new APIError('Election has already commenced', StatusCodes.BAD_REQUEST);
-  } else if (!election.contestants.includes(contestantID)) {
-    logger.error('Contestant already removed from this election');
-    throw new APIError('Contestant already removed from this election', StatusCodes.BAD_REQUEST);
   }
 
-  // remove contestant from election
-  election.contestants = election.contestants.filter(contestant => contestant != contestantID);
-  await election.save();
+  const result = await ElectionContestant.deleteOne({ election: id, contestant: contestantID });
 
-  // remove contestant's election if still a participant
-  if (contestant.election == id) {
-    contestant.set('election', undefined);
-    await contestant.save();
+  if (!result.deletedCount) {
+    logger.error('Contestant already removed from this election!');
+    throw new APIError('Contestant already removed from this election!', StatusCodes.BAD_REQUEST);
   }
+
+  // clear election contestants cache
+  const contestantsCacheKey = getElectionContestantsKey(id);
+  await deleteCacheKey(contestantsCacheKey, req.redisClient);
 
   // create an event log
   await Log.create({

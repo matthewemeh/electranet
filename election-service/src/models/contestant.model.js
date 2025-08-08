@@ -10,7 +10,6 @@ const ContestantSchema = new Schema(
     party: { type: Types.ObjectId, ref: 'Party' },
     stateOfOrigin: { type: String, required: true },
     profileImageUrl: { type: String, required: true },
-    election: { type: Types.ObjectId, ref: 'Election' },
     gender: { type: String, required: true, uppercase: true, enum: ['MALE', 'FEMALE'] },
   },
   { minimize: false, timestamps: true, collection: 'contestants' }

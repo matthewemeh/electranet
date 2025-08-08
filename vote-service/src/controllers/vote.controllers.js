@@ -14,6 +14,7 @@ const Contestant = require('../models/contestant.model');
 const ElectionVoted = require('../models/election-voted.model');
 const { APIError } = require('../middlewares/error.middlewares');
 const { sendNotification } = require('../utils/notification.utils');
+const ElectionContestant = require('../models/election-contestant.model');
 const { validateGetVotes, validateVerifyUserVote } = require('../utils/validation.utils');
 const {
   getUserKey,
@@ -33,7 +34,12 @@ const castVote = async (req, res) => {
   const { electionID, partyID } = req.body;
 
   // check if there are any contestants under that party and election
-  let contestants = await Contestant.find({ party: partyID, election: electionID }).select('_id');
+  let electionContestants = await ElectionContestant.find({
+    party: partyID,
+    election: electionID,
+  }).select('contestant -_id');
+  let contestants = electionContestants.map(({ contestant }) => contestant);
+
   if (contestants.length === 0) {
     logger.error('No contestant found for the specified party and election');
     throw new APIError(
@@ -41,9 +47,6 @@ const castVote = async (req, res) => {
       StatusCodes.BAD_REQUEST
     );
   }
-
-  // Convert contestants to an array of IDs
-  contestants = contestants.map(c => c._id);
 
   // create or update results. This whole process is to avoid race conditions
   const session = await mongoose.startSession();
@@ -153,10 +156,10 @@ const castVote = async (req, res) => {
     `
   );
 
-  logger.info('Voted cast successfully');
+  logger.info('Vote cast successfully');
   res
     .status(StatusCodes.OK)
-    .json({ success: true, data: { voteID: vote._id }, message: 'Voted cast successfully' });
+    .json({ success: true, message: 'Vote cast successfully', data: { voteID: vote._id } });
 };
 
 /**

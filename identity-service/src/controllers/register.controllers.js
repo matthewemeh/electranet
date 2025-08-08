@@ -36,7 +36,12 @@ const registerUser = async (req, res) => {
   let user = await fetchData(userCacheKey, { 'email.value': email }, User, req.redisClient);
   if (user) {
     logger.error('User already exists');
-    throw new APIError('User already exists', StatusCodes.CONFLICT);
+    throw new APIError(
+      'User already exists',
+      StatusCodes.CONFLICT,
+      null,
+      ERROR_CODES.DUPLICATE_USER
+    );
   }
 
   // check that super admin has registered
@@ -90,7 +95,12 @@ const registerAdmin = async (req, res) => {
   let user = await fetchData(userCacheKey, { 'email.value': email }, User, req.redisClient);
   if (user) {
     logger.error('User already exists');
-    throw new APIError('User already exists', StatusCodes.CONFLICT);
+    throw new APIError(
+      'User already exists',
+      StatusCodes.CONFLICT,
+      null,
+      ERROR_CODES.DUPLICATE_USER
+    );
   }
 
   const superAdmin = await User.findOne({ role: ROLES.SUPER_ADMIN });
