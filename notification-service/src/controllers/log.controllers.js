@@ -53,7 +53,7 @@ const getLogs = async (req, res) => {
     limit,
     sort: { createdAt: -1 },
     select: '-updatedAt -__v',
-    populate: { path: 'user', select: 'firstName lastName email.value' },
+    populate: { path: 'user', select: 'firstName middleName lastName email.value -_id' },
   });
 
   // cache fetched logs

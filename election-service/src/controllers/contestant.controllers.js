@@ -213,7 +213,9 @@ const getContestants = async (req, res) => {
   paginatedContestants = await Contestant.paginate(docQuery, {
     page,
     limit,
+    select: '-__v',
     sort: { updatedAt: -1 },
+    populate: { path: 'party', select: '-createdAt -updatedAt -__v' },
   });
 
   // cache fetched contestants

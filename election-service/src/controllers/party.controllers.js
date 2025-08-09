@@ -198,7 +198,7 @@ const getParties = async (req, res) => {
     }
 
     // fallback to DB
-    parties = await Party.paginate({}, { page, limit, sort: { longName: 1 } });
+    parties = await Party.paginate({}, { page, limit, select: '-__v', sort: { longName: 1 } });
 
     // cache paginated parties
     await req.redisClient.setex(partiesKey, redisCacheExpiry, JSON.stringify(parties));
@@ -223,7 +223,7 @@ const getParties = async (req, res) => {
   }
 
   // fallback to DB
-  parties = await Party.find({}).select('shortName longName logoUrl -_id').sort({ longName: 1 });
+  parties = await Party.find({}).select('shortName longName logoUrl').sort({ longName: 1 });
 
   // cache parties
   await req.redisClient.setex(partiesKey, redisCacheExpiry, JSON.stringify(parties));
