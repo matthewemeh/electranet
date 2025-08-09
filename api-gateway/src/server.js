@@ -11,7 +11,6 @@ const { logger } = require('./utils/logger.utils');
 const swaggerDocument = YAML.load('./src/swagger.yaml');
 const { configureCors } = require('./config/cors.config');
 const { configureRatelimit } = require('./config/ratelimit.config');
-const { validateApiKey } = require('./middlewares/auth.middlewares');
 const { urlVersioning } = require('./middlewares/version.middlewares');
 const { globalErrorHandler } = require('./middlewares/error.middlewares');
 const { requestLogger } = require('./middlewares/request-logger.middlewares');
@@ -48,7 +47,7 @@ const redisClient = new Redis(REDIS_URL);
 app.set('trust proxy', 1); // trust first proxy: Render
 app.use(helmet());
 app.use(hpp()); // HTTP Parameter Pollution protection
-app.use(configureCors());
+app.use(configureCors);
 app.use(express.json({ limit: '1mb' }));
 app.use(requestLogger);
 
@@ -75,34 +74,34 @@ app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerDocument));
 app.use(urlVersioning('v1'));
 
 // setting up proxy for identity services
-app.use('/v1/otp', mainRatelimiter, validateApiKey, identityServiceProxy);
-app.use('/v1/auth', mainRatelimiter, validateApiKey, identityServiceProxy);
-app.use('/v1/users', mainRatelimiter, validateApiKey, identityServiceProxy);
+app.use('/v1/otp', mainRatelimiter, identityServiceProxy);
+app.use('/v1/auth', mainRatelimiter, identityServiceProxy);
+app.use('/v1/users', mainRatelimiter, identityServiceProxy);
 
 // setting up proxy for election services
-app.use('/v1/parties/add', mainRatelimiter, validateApiKey, electionServiceMultipartProxy);
-app.use('/v1/parties/edit', mainRatelimiter, validateApiKey, electionServiceMultipartProxy);
-app.use('/v1/contestants/add', mainRatelimiter, validateApiKey, electionServiceMultipartProxy);
-app.use('/v1/contestants/edit', mainRatelimiter, validateApiKey, electionServiceMultipartProxy);
+app.use('/v1/parties/add', mainRatelimiter, electionServiceMultipartProxy);
+app.use('/v1/parties/edit', mainRatelimiter, electionServiceMultipartProxy);
+app.use('/v1/contestants/add', mainRatelimiter, electionServiceMultipartProxy);
+app.use('/v1/contestants/edit', mainRatelimiter, electionServiceMultipartProxy);
 
-app.use('/v1/parties', mainRatelimiter, validateApiKey, electionServiceProxy);
-app.use('/v1/elections', mainRatelimiter, validateApiKey, electionServiceProxy);
-app.use('/v1/contestants', mainRatelimiter, validateApiKey, electionServiceProxy);
+app.use('/v1/parties', mainRatelimiter, electionServiceProxy);
+app.use('/v1/elections', mainRatelimiter, electionServiceProxy);
+app.use('/v1/contestants', mainRatelimiter, electionServiceProxy);
 
 // setting up proxy for vote services
-app.use('/v1/votes', mainRatelimiter, validateApiKey, voteServiceProxy);
+app.use('/v1/votes', mainRatelimiter, voteServiceProxy);
 
 // setting up proxy for results services
-app.use('/v1/results', mainRatelimiter, validateApiKey, resultServiceProxy);
+app.use('/v1/results', mainRatelimiter, resultServiceProxy);
 
 // setting up proxy for notification services
-app.use('/v1/logs', mainRatelimiter, validateApiKey, notificationServiceProxy);
-app.use('/v1/notifications', mainRatelimiter, validateApiKey, notificationServiceProxy);
+app.use('/v1/logs', mainRatelimiter, notificationServiceProxy);
+app.use('/v1/notifications', mainRatelimiter, notificationServiceProxy);
 
 // setting up proxy for Face ID services
-app.use('/v1/face-id/register', mainRatelimiter, validateApiKey, faceIdServiceMultipartProxy);
+app.use('/v1/face-id/register', mainRatelimiter, faceIdServiceMultipartProxy);
 
-app.use('/v1/face-id', mainRatelimiter, validateApiKey, faceIdServiceProxy);
+app.use('/v1/face-id', mainRatelimiter, faceIdServiceProxy);
 
 // handle unallowed methods for each route
 app.use(methodChecker);
