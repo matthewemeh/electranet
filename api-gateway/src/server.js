@@ -47,7 +47,6 @@ const redisClient = new Redis(REDIS_URL);
 app.set('trust proxy', 1); // trust first proxy: Render
 app.use(helmet());
 app.use(hpp()); // HTTP Parameter Pollution protection
-app.use(configureCors);
 app.use(express.json({ limit: '1mb' }));
 app.use(requestLogger);
 
@@ -57,6 +56,8 @@ app.get('/health', healthCheckRateLimiter, (req, res) => {
   logger.info('Health check successful');
   res.sendStatus(StatusCodes.OK);
 });
+
+app.use(configureCors);
 
 // IP-based rate limiting for sensitive endpoints
 const mainRatelimiter = configureRatelimit(redisClient, 200);
