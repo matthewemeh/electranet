@@ -1,11 +1,14 @@
 const express = require('express');
 const { Redis } = require('ioredis');
+const { verify } = require('argon2');
 const { StatusCodes } = require('http-status-codes');
 
 const Party = require('../models/party.model');
+const { ERROR_CODES } = require('../constants');
 const { logger } = require('../utils/logger.utils');
 const { APIError } = require('./error.middlewares');
 const Election = require('../models/election.model');
+const { getVoteTokenKey } = require('../utils/redis.utils');
 const { validateCastVote } = require('../utils/validation.utils');
 
 /**
@@ -23,7 +26,32 @@ const verifyVote = async (req, res, next) => {
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { electionID, partyID } = reqBody;
+  const { electionID, partyID, voteToken } = reqBody;
+
+  // check if vote token is valid
+  const voteTokenKey = getVoteTokenKey(user._id);
+  const hashedVoteToken = await req.redisClient.get(voteTokenKey);
+  if (!hashedVoteToken) {
+    logger.error('Vote Token has expired');
+    throw new APIError(
+      'Vote Token has expired',
+      StatusCodes.GONE,
+      null,
+      ERROR_CODES.INVALID_VOTE_TOKEN
+    );
+  }
+
+  const isVoteTokenValid = await verify(hashedVoteToken, voteToken);
+
+  if (!isVoteTokenValid) {
+    logger.error('Invalid Vote Token');
+    throw new APIError(
+      'Invalid Vote Token',
+      StatusCodes.BAD_REQUEST,
+      null,
+      ERROR_CODES.INVALID_VOTE_TOKEN
+    );
+  }
 
   // check if election exists
   const election = await Election.findById(electionID);

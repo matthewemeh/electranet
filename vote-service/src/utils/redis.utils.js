@@ -12,6 +12,12 @@ const getUserKey = (...values) => `user:${values.join(':')}`;
 
 /**
  * @param {Array<string | number>} values unique values to be used in key. The order of the arguments affects the key!!!
+ * @returns {string} vote token key in a standard pattern
+ */
+const getVoteTokenKey = (...values) => `vote-token:${values.join(':')}`;
+
+/**
+ * @param {Array<string | number>} values unique values to be used in key. The order of the arguments affects the key!!!
  * @returns {string} vote verify token key in a standard pattern
  */
 const getVoteVerifyKey = (...values) => `vote-verify:${values.join(':')}`;
@@ -63,6 +69,7 @@ module.exports = {
   getUserKey,
   getVotesKey,
   deleteCacheKey,
+  getVoteTokenKey,
   getVoteVerifyKey,
   redisCacheExpiry,
 };

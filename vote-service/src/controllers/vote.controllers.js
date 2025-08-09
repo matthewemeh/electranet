@@ -1,7 +1,9 @@
 const moment = require('moment');
+const { hash } = require('argon2');
 const express = require('express');
 const mongoose = require('mongoose');
 const { Redis } = require('ioredis');
+const { v4: uuidv4 } = require('uuid');
 const SHA256 = require('crypto-js/sha256');
 const { StatusCodes } = require('http-status-codes');
 
@@ -10,7 +12,6 @@ const Result = require('../models/result.model');
 const { logger } = require('../utils/logger.utils');
 const Election = require('../models/election.model');
 const { sendEmail } = require('../utils/email.utils');
-const Contestant = require('../models/contestant.model');
 const ElectionVoted = require('../models/election-voted.model');
 const { APIError } = require('../middlewares/error.middlewares');
 const { sendNotification } = require('../utils/notification.utils');
@@ -19,6 +20,7 @@ const { validateGetVotes, validateVerifyUserVote } = require('../utils/validatio
 const {
   getUserKey,
   getVotesKey,
+  getVoteTokenKey,
   getVoteVerifyKey,
   redisCacheExpiry,
 } = require('../utils/redis.utils');
@@ -268,4 +270,23 @@ const getVotes = async (req, res) => {
     .json({ success: true, message: 'Votes fetched successfully', data: paginatedVotes });
 };
 
-module.exports = { getVotes, castVote, verifyUserVote };
+/**
+ * @param {express.Request & {redisClient: Redis}} req
+ * @param {express.Response} res
+ */
+const addVoteToken = async (req, res) => {
+  logger.info('Get Votes endpoint called');
+
+  const token = uuidv4();
+  const hashedToken = await hash(token);
+  const voteTokenKey = getVoteTokenKey(req.user._id);
+
+  await req.redisClient.setex(voteTokenKey, redisCacheExpiry, hashedToken);
+
+  logger.info('Vote Token created successfully');
+  res
+    .status(StatusCodes.OK)
+    .json({ success: true, message: 'Vote Token created successfully', data: { token } });
+};
+
+module.exports = { getVotes, castVote, verifyUserVote, addVoteToken };

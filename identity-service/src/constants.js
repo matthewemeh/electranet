@@ -9,5 +9,6 @@ module.exports = {
     INVALID_REFRESH_TOKEN: 'E005',
     DUPLICATE_USER: 'E006',
     SUPER_ADMIN_REG_FAILED: 'E007',
+    INVALID_VOTE_TOKEN: 'E008',
   },
 };

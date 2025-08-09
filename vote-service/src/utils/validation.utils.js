@@ -2,6 +2,7 @@ const Joi = require('joi');
 
 const validateCastVote = data => {
   const schema = Joi.object({
+    voteToken: Joi.string().required(),
     partyID: Joi.string()
       .pattern(/^[a-f0-9]{24}$/)
       .messages({ 'string.pattern.base': '"partyID" must be a valid ID' })
