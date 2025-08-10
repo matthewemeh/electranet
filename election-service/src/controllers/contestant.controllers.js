@@ -43,10 +43,7 @@ const addContestant = async (req, res) => {
     logger.warn('Validation error', {
       message: `"${CONTESTANT_IMAGE_KEY}" is missing in Multipart form data`,
     });
-    throw new APIError(
-      `"${CONTESTANT_IMAGE_KEY}" is missing in Multipart form data`,
-      StatusCodes.BAD_REQUEST
-    );
+    throw new APIError(`Please select a Contestant Image`, StatusCodes.BAD_REQUEST);
   }
 
   // check if given party exists

@@ -37,10 +37,7 @@ const addParty = async (req, res) => {
     logger.warn('Validation error', {
       message: `"${PARTY_IMAGE_KEY}" is missing in Multipart form data`,
     });
-    throw new APIError(
-      `"${PARTY_IMAGE_KEY}" is missing in Multipart form data`,
-      StatusCodes.BAD_REQUEST
-    );
+    throw new APIError('Please select a Party Image', StatusCodes.BAD_REQUEST);
   }
 
   const party = new Party(reqBody);
