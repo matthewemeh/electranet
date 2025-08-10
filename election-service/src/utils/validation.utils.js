@@ -4,8 +4,8 @@ const validateElection = data => {
   const schema = Joi.object({
     endTime: Joi.date().required(),
     startTime: Joi.date().required(),
-    delimitationCode: Joi.string().trim().max(20),
     name: Joi.string().trim().min(2).max(256).required(),
+    delimitationCode: Joi.string().trim().max(20).allow(''),
   });
 
   return schema.validate(data);
@@ -16,7 +16,7 @@ const validateElectionUpdate = data => {
     endTime: Joi.date(),
     startTime: Joi.date(),
     name: Joi.string().trim().min(2).max(256),
-    delimitationCode: Joi.string().trim().max(20),
+    delimitationCode: Joi.string().trim().max(20).allow(''),
   })
     .min(1)
     .messages({
@@ -39,11 +39,11 @@ const validateElectionContestant = data => {
 
 const validateContestant = data => {
   const schema = Joi.object({
-    middleName: Joi.string().trim().min(2).max(64),
     stateOfOrigin: Joi.string().trim().max(30).required(),
     gender: Joi.string().equal('MALE', 'FEMALE').required(),
     lastName: Joi.string().trim().min(2).max(64).required(),
     firstName: Joi.string().trim().min(2).max(64).required(),
+    middleName: Joi.string().trim().min(2).max(64).allow(''),
     party: Joi.string()
       .pattern(/^[a-f0-9]{24}$/)
       .messages({ 'string.pattern.base': '"party" must be a valid ID' }),
@@ -59,7 +59,7 @@ const validateContestantUpdate = data => {
     gender: Joi.string().equal('MALE', 'FEMALE'),
     lastName: Joi.string().trim().min(2).max(64),
     firstName: Joi.string().trim().min(2).max(64),
-    middleName: Joi.string().trim().min(2).max(64),
+    middleName: Joi.string().trim().min(2).max(64).allow(''),
     party: Joi.string()
       .pattern(/^[a-f0-9]{24}$/)
       .messages({ 'string.pattern.base': '"party" must be a valid ID' }),
@@ -94,7 +94,7 @@ const validateGetElections = data => {
     endTime: Joi.date(),
     startTime: Joi.date(),
     sortBy: Joi.string().trim(),
-    delimitationCode: Joi.string(),
+    delimitationCode: Joi.string().allow(''),
     page: Joi.number().integer().positive().default(1),
     limit: Joi.number().integer().equal(10, 25, 50).default(10),
   });
@@ -115,7 +115,7 @@ const validateGetUserElections = data => {
 
 const validateParty = data => {
   const schema = Joi.object({
-    motto: Joi.string().max(256),
+    motto: Joi.string().max(256).allow(''),
     shortName: Joi.string().trim().max(10).uppercase().required(),
     longName: Joi.string().trim().max(128).uppercase().required(),
   });
@@ -125,7 +125,7 @@ const validateParty = data => {
 
 const validatePartyUpdate = data => {
   const schema = Joi.object({
-    motto: Joi.string().max(256),
+    motto: Joi.string().max(256).allow(''),
     shortName: Joi.string().trim().max(10).uppercase(),
     longName: Joi.string().trim().max(128).uppercase(),
   })

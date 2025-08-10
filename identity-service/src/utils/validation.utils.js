@@ -6,12 +6,12 @@ const validateRegisterUser = data => {
   const schema = Joi.object({
     vin: Joi.string().trim().required(),
     delimitationCode: Joi.string().required(),
-    middleName: Joi.string().trim().min(2).max(64),
     address: Joi.string().trim().max(256).required(),
     occupation: Joi.string().trim().max(128).required(),
-    lastName: Joi.string().trim().min(2).max(64).required(),
     gender: Joi.string().equal('MALE', 'FEMALE').required(),
+    lastName: Joi.string().trim().min(2).max(64).required(),
     firstName: Joi.string().trim().min(2).max(64).required(),
+    middleName: Joi.string().trim().min(2).max(64).allow(''),
     email: Joi.string()
       .lowercase()
       .trim()
@@ -36,9 +36,9 @@ const validateRegisterUser = data => {
 
 const validateRegisterAdmin = data => {
   const schema = Joi.object({
-    middleName: Joi.string().trim().min(2).max(64),
     lastName: Joi.string().trim().min(2).max(64).required(),
     firstName: Joi.string().trim().min(2).max(64).required(),
+    middleName: Joi.string().trim().min(2).max(64).allow(''),
     role: Joi.string().equal(ROLES.ADMIN, ROLES.SUPER_ADMIN).required(),
     email: Joi.string()
       .lowercase()
