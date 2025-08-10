@@ -180,19 +180,20 @@ const getContestants = async (req, res) => {
   logger.info('Get Contestants endpoint called');
 
   // validate request query
-  const { error, value } = validateGetContestants(req.query);
+  const { error, value: reqBody } = validateGetContestants(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { page, limit, ...docQuery } = value;
+  const { page, limit, sortBy, ...docQuery } = reqBody;
   const { party, isDeleted, gender, firstName, lastName } = docQuery;
 
   // check cached contestants
   const contestantsCacheKey = getContestantsKey(
     page,
     limit,
+    sortBy,
     party,
     gender,
     lastName,
@@ -209,12 +210,21 @@ const getContestants = async (req, res) => {
     });
   }
 
+  if (firstName) {
+    docQuery.firstName = { $regex: firstName, $options: 'i' };
+  }
+
+  if (lastName) {
+    docQuery.lastName = { $regex: lastName, $options: 'i' };
+  }
+
   // fallback to DB
+  const sort = sortBy ? JSON.parse(sortBy) : { updatedAt: -1 };
   paginatedContestants = await Contestant.paginate(docQuery, {
+    sort,
     page,
     limit,
     select: '-__v',
-    sort: { updatedAt: -1 },
     populate: { path: 'party', select: '-createdAt -updatedAt -__v' },
   });
 

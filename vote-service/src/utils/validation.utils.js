@@ -29,6 +29,7 @@ const validateVerifyUserVote = data => {
 
 const validateGetVotes = data => {
   const schema = Joi.object({
+    sortBy: Joi.string().trim(),
     page: Joi.number().integer().positive().default(1),
     limit: Joi.number().integer().equal(10, 25, 50).default(10),
   });

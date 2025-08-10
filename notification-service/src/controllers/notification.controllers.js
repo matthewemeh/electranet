@@ -16,17 +16,17 @@ const getNotifications = async (req, res) => {
   logger.info('Get notifications endpoint called');
 
   // validate request query
-  const { error, value } = validateGetNotifications(req.query);
+  const { error, value: reqBody } = validateGetNotifications(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { user } = req;
-  const { page, limit, startTime, endTime } = value;
+  const { page, limit, sortBy, startTime, endTime } = reqBody;
 
   // check cache for notifications
-  const notificationsCacheKey = getNotificationsKey(page, limit, startTime, endTime);
+  const notificationsCacheKey = getNotificationsKey(page, limit, sortBy, startTime, endTime);
   let paginatedNotifications = await req.redisClient.get(notificationsCacheKey);
   if (paginatedNotifications) {
     logger.info('Notifications fetched successfully');
@@ -46,10 +46,11 @@ const getNotifications = async (req, res) => {
     paginationFilters.$and.push({ createdAt: { $lte: endTime } });
   }
 
+  const sort = sortBy ? JSON.parse(sortBy) : { createdAt: -1 };
   paginatedNotifications = await Notification.paginate(paginationFilters, {
+    sort,
     page,
     limit,
-    sort: { createdAt: -1 },
     select: '-user -updatedAt -__v',
   });
 

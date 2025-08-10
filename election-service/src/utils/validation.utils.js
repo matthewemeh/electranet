@@ -77,6 +77,7 @@ const validateGetContestants = data => {
     lastName: Joi.string(),
     firstName: Joi.string(),
     isDeleted: Joi.boolean(),
+    sortBy: Joi.string().trim(),
     gender: Joi.string().equal('MALE', 'FEMALE'),
     page: Joi.number().integer().positive().default(1),
     limit: Joi.number().integer().equal(10, 25, 50).default(10),
@@ -92,6 +93,7 @@ const validateGetElections = data => {
   const schema = Joi.object({
     endTime: Joi.date(),
     startTime: Joi.date(),
+    sortBy: Joi.string().trim(),
     delimitationCode: Joi.string(),
     page: Joi.number().integer().positive().default(1),
     limit: Joi.number().integer().equal(10, 25, 50).default(10),
@@ -137,6 +139,7 @@ const validatePartyUpdate = data => {
 
 const validateGetParties = data => {
   const schema = Joi.object({
+    sortBy: Joi.string().trim(),
     page: Joi.number().integer().positive(),
     limit: Joi.number().integer().equal(10, 25, 50),
   });

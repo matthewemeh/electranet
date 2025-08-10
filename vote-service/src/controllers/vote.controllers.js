@@ -234,17 +234,17 @@ const getVotes = async (req, res) => {
   logger.info('Get Votes endpoint called');
 
   // validate request query
-  const { error, value } = validateGetVotes(req.query);
+  const { error, value: reqBody } = validateGetVotes(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { id } = req.params;
-  const { page, limit } = value;
+  const { page, limit, sortBy } = reqBody;
 
   // check for cached votes
-  const votesKey = getVotesKey(id, page, limit);
+  const votesKey = getVotesKey(id, page, limit, sortBy);
   let paginatedVotes = await req.redisClient.get(votesKey);
   if (paginatedVotes) {
     logger.info('Votes fetched successfully from cache');
@@ -256,10 +256,8 @@ const getVotes = async (req, res) => {
   }
 
   // fallback to DB
-  paginatedVotes = await Vote.paginate(
-    { election: id },
-    { page, limit, select: '-__v', sort: { timestamp: -1 } }
-  );
+  const sort = sortBy ? JSON.parse(sortBy) : { timestamp: -1 };
+  paginatedVotes = await Vote.paginate({ election: id }, { page, limit, sort, select: '-__v' });
 
   // cache the fetched votes
   await req.redisClient.setex(votesKey, redisCacheExpiry, JSON.stringify(paginatedVotes));

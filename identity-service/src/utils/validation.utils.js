@@ -156,6 +156,7 @@ const validateGetUsers = data => {
     lastName: Joi.string(),
     firstName: Joi.string(),
     email: Joi.string().email(),
+    sortBy: Joi.string().trim(),
     delimitationCode: Joi.string(),
     role: Joi.string().equal(ROLES.ADMIN, ROLES.USER),
     page: Joi.number().integer().positive().default(1),
@@ -167,6 +168,7 @@ const validateGetUsers = data => {
 
 const validateGetAdminTokens = data => {
   const schema = Joi.object({
+    sortBy: Joi.string().trim(),
     page: Joi.number().integer().positive().default(1),
     limit: Joi.number().integer().equal(10, 25, 50).default(10),
   });

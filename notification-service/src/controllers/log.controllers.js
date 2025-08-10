@@ -16,16 +16,16 @@ const getLogs = async (req, res) => {
   logger.info('Get logs endpoint called');
 
   // validate request query
-  const { error, value } = validateGetLogs(req.query);
+  const { error, value: reqBody } = validateGetLogs(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { page, limit, startTime, endTime } = value;
+  const { page, limit, sortBy, startTime, endTime } = reqBody;
 
   // check cache for logs
-  const logsCacheKey = getLogsKey(page, limit, startTime, endTime);
+  const logsCacheKey = getLogsKey(page, limit, sortBy, startTime, endTime);
   let paginatedLogs = await req.redisClient.get(logsCacheKey);
   if (paginatedLogs) {
     logger.info('Logs fetched successfully');
@@ -48,10 +48,11 @@ const getLogs = async (req, res) => {
     }
   }
 
+  const sort = sortBy ? JSON.parse(sortBy) : { createdAt: -1 };
   paginatedLogs = await Log.paginate(paginationFilters, {
+    sort,
     page,
     limit,
-    sort: { createdAt: -1 },
     select: '-updatedAt -__v',
     populate: { path: 'user', select: 'firstName middleName lastName email.value -_id' },
   });

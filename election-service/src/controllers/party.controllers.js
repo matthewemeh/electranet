@@ -156,7 +156,7 @@ const getParties = async (req, res) => {
   logger.info('Get Parties endpoint called');
 
   // validate request query
-  const { error, value } = validateGetParties(req.query);
+  const { error, value: reqBody } = validateGetParties(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
@@ -165,7 +165,7 @@ const getParties = async (req, res) => {
   let parties, partiesKey;
 
   // check if request is for pagination
-  const { page, limit } = value;
+  const { page, limit, sortBy } = reqBody;
   if (page && !limit) {
     logger.warn(
       '"limit" is required when "page" is provided. Both "page" and "limit" must be specified for pagination.'
@@ -184,9 +184,11 @@ const getParties = async (req, res) => {
     );
   }
 
+  const sort = sortBy ? JSON.parse(sortBy) : { longName: 1 };
+
   if (page && limit) {
     // check cached paginated parties
-    partiesKey = getPartiesKey(page, limit);
+    partiesKey = getPartiesKey(page, limit, sortBy);
     parties = await req.redisClient.get(partiesKey);
     if (parties) {
       logger.info('Parties fetched successfully');
@@ -198,7 +200,7 @@ const getParties = async (req, res) => {
     }
 
     // fallback to DB
-    parties = await Party.paginate({}, { page, limit, select: '-__v', sort: { longName: 1 } });
+    parties = await Party.paginate({}, { sort, page, limit, select: '-__v' });
 
     // cache paginated parties
     await req.redisClient.setex(partiesKey, redisCacheExpiry, JSON.stringify(parties));
@@ -223,7 +225,7 @@ const getParties = async (req, res) => {
   }
 
   // fallback to DB
-  parties = await Party.find({}).select('shortName longName logoUrl').sort({ longName: 1 });
+  parties = await Party.find({}).select('shortName longName logoUrl').sort(sort);
 
   // cache parties
   await req.redisClient.setex(partiesKey, redisCacheExpiry, JSON.stringify(parties));

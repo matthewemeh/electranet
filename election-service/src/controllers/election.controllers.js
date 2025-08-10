@@ -61,17 +61,24 @@ const getElections = async (req, res) => {
   logger.info('Get Elections endpoint called');
 
   // validate request query
-  const { error, value } = validateGetElections(req.query);
+  const { error, value: reqBody } = validateGetElections(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { page, limit, ...docQuery } = value;
+  const { page, limit, sortBy, ...docQuery } = reqBody;
   const { delimitationCode, startTime, endTime } = docQuery;
 
   // check cached elections
-  const electionsCacheKey = getElectionsKey(page, limit, delimitationCode, startTime, endTime);
+  const electionsCacheKey = getElectionsKey(
+    page,
+    limit,
+    sortBy,
+    endTime,
+    startTime,
+    delimitationCode
+  );
   let paginatedElections = await req.redisClient.get(electionsCacheKey);
   if (paginatedElections) {
     logger.info('Elections fetched successfully');
@@ -82,19 +89,25 @@ const getElections = async (req, res) => {
     });
   }
 
+  if (delimitationCode) {
+    docQuery.delimitationCode = { $regex: `^${delimitationCode}`, $options: 'i' };
+  }
+
   if (startTime) {
     docQuery.startTime = { $gte: startTime };
   }
+
   if (endTime) {
     docQuery.endTime = { $lte: endTime };
   }
 
   // fallback to DB
+  const sort = sortBy ? JSON.parse(sortBy) : { createdAt: -1 };
   paginatedElections = await Election.paginate(docQuery, {
+    sort,
     page,
     limit,
-    sort: { createdAt: -1 },
-    select: '-contestants -createdAt -updatedAt -__v',
+    select: '-createdAt -updatedAt -__v',
   });
 
   // cache fetched elections
@@ -118,14 +131,14 @@ const getUserElections = async (req, res) => {
   logger.info('Get User Elections endpoint called');
 
   // validate request query
-  const { error, value } = validateGetUserElections(req.query);
+  const { error, value: reqBody } = validateGetUserElections(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { user } = req;
-  const { page, limit, ...docQuery } = value;
+  const { page, limit, ...docQuery } = reqBody;
   const { startTime, endTime } = docQuery;
 
   // check cache for user elections
@@ -144,6 +157,7 @@ const getUserElections = async (req, res) => {
   if (startTime) {
     docQuery.startTime = { $gte: startTime };
   }
+
   if (endTime) {
     docQuery.endTime = { $lte: endTime };
   }
@@ -153,7 +167,7 @@ const getUserElections = async (req, res) => {
     page,
     limit,
     sort: { createdAt: -1 },
-    select: '-createdAt -updatedAt -__v -startTime -endTime -contestants',
+    select: '-createdAt -updatedAt -__v',
   });
 
   // cache fetched user elections

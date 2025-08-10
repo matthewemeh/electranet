@@ -33,20 +33,21 @@ const getUsers = async (req, res) => {
   logger.info('Get Users endpoint called');
 
   // validate the request query
-  const { error, value } = validateGetUsers(req.query);
+  const { error, value: reqBody } = validateGetUsers(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { role: adminRole } = req.user;
-  const { page, limit, delimitationCode, email, firstName, lastName, role } = value;
+  const { page, limit, sortBy, delimitationCode, email, firstName, lastName, role } = reqBody;
 
   // check cache for users
   const usersCacheKey = getUsersKey(
     adminRole,
     page,
     limit,
+    sortBy,
     role,
     email,
     lastName,
@@ -65,16 +66,17 @@ const getUsers = async (req, res) => {
 
   // remove undefined fields
   const paginationFilters = {};
+
   if (delimitationCode) {
-    paginationFilters.delimitationCode = delimitationCode;
+    paginationFilters.delimitationCode = { $regex: `^${delimitationCode}`, options: 'i' };
   }
 
   if (firstName) {
-    paginationFilters.firstName = firstName;
+    paginationFilters.firstName = { $regex: firstName, $options: 'i' };
   }
 
   if (lastName) {
-    paginationFilters.lastName = lastName;
+    paginationFilters.lastName = { $regex: lastName, $options: 'i' };
   }
 
   if (email) {
@@ -93,11 +95,8 @@ const getUsers = async (req, res) => {
   }
 
   // fallback to DB
-  paginatedUsers = await User.paginate(paginationFilters, {
-    page,
-    limit,
-    sort: { createdAt: -1 },
-  });
+  const sort = sortBy ? JSON.parse(sortBy) : { createdAt: -1 };
+  paginatedUsers = await User.paginate(paginationFilters, { sort, page, limit });
 
   // cache fetched users
   await req.redisClient.setex(usersCacheKey, redisCacheExpiry, JSON.stringify(paginatedUsers));
@@ -241,16 +240,16 @@ const getAdminTokens = async (req, res) => {
   logger.info('Get Admin Tokens endpoint called');
 
   // validate the request query
-  const { error, value } = validateGetAdminTokens(req.query);
+  const { error, value: reqBody } = validateGetAdminTokens(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { page, limit } = value;
+  const { page, limit, sortBy } = reqBody;
 
   // check cached admin tokens
-  const tokensCacheKey = getAdminTokensKey(page, limit);
+  const tokensCacheKey = getAdminTokensKey(page, limit, sortBy);
   let paginatedAdminTokens = await req.redisClient.get(tokensCacheKey);
   if (paginatedAdminTokens) {
     logger.info('Admin Tokens fetched successfully');
@@ -262,12 +261,13 @@ const getAdminTokens = async (req, res) => {
   }
 
   // fallback to DB
+  const sort = sortBy ? JSON.parse(sortBy) : { createdAt: -1 };
   paginatedAdminTokens = await AdminToken.paginate(
     {},
     {
+      sort,
       page,
       limit,
-      sort: { createdAt: -1 },
       select: '-updatedAt -__v',
       populate: { path: 'user', select: 'firstName lastName email.value -_id' },
     }
