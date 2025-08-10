@@ -57,19 +57,19 @@ app.get('/health', healthCheckRateLimiter, (req, res) => {
   res.sendStatus(StatusCodes.OK);
 });
 
-app.use(configureCors);
-
-// IP-based rate limiting for sensitive endpoints
-const mainRatelimiter = configureRatelimit(redisClient, 200);
-const otpRatelimiter = configureRatelimit(redisClient, 15, 300_000);
-app.use('/v1/otp/send', otpRatelimiter);
-
 app.get('/', (req, res) => {
   res.send('<h1>Electranet API</h1><a href="/api-docs">Documentation</a>');
 });
 
 // serve the OpenAPI specification
 app.use('/api-docs', swaggerUI.serve, swaggerUI.setup(swaggerDocument));
+
+app.use(configureCors);
+
+// IP-based rate limiting for sensitive endpoints
+const mainRatelimiter = configureRatelimit(redisClient, 200);
+const otpRatelimiter = configureRatelimit(redisClient, 15, 300_000);
+app.use('/v1/otp/send', otpRatelimiter);
 
 // apply middleware to accept only specific version requests
 app.use(urlVersioning('v1'));
