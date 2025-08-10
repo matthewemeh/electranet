@@ -88,7 +88,10 @@ const updateParty = async (req, res) => {
 
   // validate request body
   const { error, value: reqBody } = validatePartyUpdate(req.body ?? {});
-  if (error) {
+  const partyImage = req.files?.find(({ fieldname }) => fieldname === PARTY_IMAGE_KEY);
+  const isFilePayload = Object.keys(reqBody).length === 0;
+
+  if ((isFilePayload && !partyImage) || (!isFilePayload && error)) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
@@ -107,7 +110,6 @@ const updateParty = async (req, res) => {
 
   // check if party image is provided
   // if provided, upload to Supabase Storage and update party logoUrl
-  const partyImage = req.files?.find(({ fieldname }) => fieldname === PARTY_IMAGE_KEY);
   if (partyImage) {
     // Upload to Supabase Storage
     const filePath = getPartyImageKey(party._id);

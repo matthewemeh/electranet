@@ -103,7 +103,10 @@ const updateContestant = async (req, res) => {
 
   // validate request body
   const { error, value: reqBody } = validateContestantUpdate(req.body ?? {});
-  if (error) {
+  const contestantImage = req.files?.find(({ fieldname }) => fieldname === CONTESTANT_IMAGE_KEY);
+  const isFilePayload = Object.keys(reqBody).length === 0;
+
+  if ((isFilePayload && !contestantImage) || (!isFilePayload && error)) {
     logger.warn('Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
@@ -131,7 +134,6 @@ const updateContestant = async (req, res) => {
 
   // check if contestant image is provided
   // if provided, upload to Supabase Storage and update contestant profileImageUrl
-  const contestantImage = req.files?.find(({ fieldname }) => fieldname === CONTESTANT_IMAGE_KEY);
   if (contestantImage) {
     // Upload to Supabase Storage
     const filePath = getContestantImageKey(contestant._id);
