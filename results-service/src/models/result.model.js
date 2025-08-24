@@ -16,7 +16,13 @@ const ResultSchema = new Schema(
     results: [{ type: ResultsSchema }],
     election: { type: Types.ObjectId, ref: 'Election', unique: true, required: true },
   },
-  { minimize: false, timestamps: true, collection: 'results' }
+  {
+    minimize: false,
+    timestamps: true,
+    collection: 'results',
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
 
 ResultSchema.virtual('totalVotes').get(function () {

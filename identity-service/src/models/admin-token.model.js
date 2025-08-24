@@ -15,7 +15,13 @@ const AdminTokenSchema = new Schema(
       enum: Object.values(ADMIN_TOKEN_STATUSES),
     },
   },
-  { minimize: false, timestamps: true, collection: 'adminTokens' }
+  {
+    minimize: false,
+    timestamps: true,
+    collection: 'adminTokens',
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
 AdminTokenSchema.plugin(mongoosePaginate);
 
