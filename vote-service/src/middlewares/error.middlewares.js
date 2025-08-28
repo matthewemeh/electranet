@@ -39,8 +39,9 @@ const globalErrorHandler = (error, req, res, next) => {
   } else if (error.name === 'ValidationError') {
     const errorResponse = { errors: {}, success: false, message: error.message };
 
-    Object.entries(error.errors).forEach(([key, value]) => {
+    Object.entries(error.errors).forEach(([key, value], index) => {
       errorResponse.errors[key] = value.message;
+      if (index === 0) errorResponse.message = value.message;
     });
 
     logger.error('ValidationError', { message: errorResponse.message });

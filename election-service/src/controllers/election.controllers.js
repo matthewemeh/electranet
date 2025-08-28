@@ -138,11 +138,11 @@ const getUserElections = async (req, res) => {
   }
 
   const { user } = req;
-  const { page, limit, ...docQuery } = reqBody;
+  const { page, limit, sortBy, ...docQuery } = reqBody;
   const { startTime, endTime } = docQuery;
 
   // check cache for user elections
-  const userElectionsKey = getUserElectionsKey(user._id, page, limit, startTime, endTime);
+  const userElectionsKey = getUserElectionsKey(page, limit, sortBy, startTime, endTime);
   let paginatedElections = await req.redisClient.get(userElectionsKey);
   if (paginatedElections) {
     logger.info('Elections fetched successfully');
@@ -163,10 +163,11 @@ const getUserElections = async (req, res) => {
   }
 
   // fallback to DB
+  const sort = sortBy ? JSON.parse(sortBy) : { startTime: -1 };
   paginatedElections = await Election.paginate(docQuery, {
+    sort,
     page,
     limit,
-    sort: { createdAt: -1 },
     select: '-createdAt -updatedAt -__v',
   });
 

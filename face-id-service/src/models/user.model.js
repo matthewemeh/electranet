@@ -14,9 +14,9 @@ const EmailSchema = new Schema(
 
 const UserSchema = new Schema(
   {
+    faceID: { type: Boolean },
     isInvited: { type: Boolean },
     vin: { type: String, immutable: true },
-    faceID: { type: Boolean, default: false },
     email: { type: EmailSchema, required: true },
     middleName: { type: String, immutable: true },
     dateOfBirth: { type: String, immutable: true },

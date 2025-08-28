@@ -12,7 +12,7 @@ const ElectionSchema = new Schema(
         validator: function (value) {
           return value > this.startTime;
         },
-        message: props => `${props.value} should not be earlier than "startTime"`,
+        message: 'End Time should not be earlier than Start Time',
       },
     },
     startTime: {
@@ -22,11 +22,17 @@ const ElectionSchema = new Schema(
         validator: function (value) {
           return value < this.endTime;
         },
-        message: props => `${props.value} should not be later than "endTime"`,
+        message: 'Start Time should not be later than End Time',
       },
     },
   },
-  { minimize: false, timestamps: true, collection: 'elections' }
+  {
+    minimize: false,
+    timestamps: true,
+    collection: 'elections',
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true },
+  }
 );
 ElectionSchema.plugin(mongoosePaginate);
 
