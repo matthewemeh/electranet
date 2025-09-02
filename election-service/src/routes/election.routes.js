@@ -15,11 +15,14 @@ const {
   deleteElection,
   removeContestant,
   getUserElections,
+  getUserVotedElections,
 } = require('../controllers/election.controllers');
 
 router.use(validateAuthKey, verifyToken);
 
 router.get('/get-user-elections', verifyUser, getUserElections);
+
+router.get('/get-user-voted-elections', verifyUser, getUserVotedElections);
 
 router.use(verifyAdminToken);
 

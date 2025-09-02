@@ -29,6 +29,12 @@ const getVoteVerifyKey = (...values) => `vote-verify:${values.join(':')}`;
 const getVotesKey = (...values) => `votes:${values.join(':')}`;
 
 /**
+ * @param {Array<string | number>} values unique values to be used in key. The order of the arguments affects the key!!!
+ * @returns {string} elections voted key in a standard pattern
+ */
+const getElectionsVotedKey = (...values) => `elections-voted:${values.join(':')}`;
+
+/**
  * This function checks Redis cache before checking the database for requested object
  * @param {string} cacheKey the cached data's key
  * @param {object} searchQuery the fields to query the database if cache is not found
@@ -72,4 +78,5 @@ module.exports = {
   getVoteTokenKey,
   getVoteVerifyKey,
   redisCacheExpiry,
+  getElectionsVotedKey,
 };

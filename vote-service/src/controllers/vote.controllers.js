@@ -20,9 +20,11 @@ const { validateGetVotes, validateVerifyUserVote } = require('../utils/validatio
 const {
   getUserKey,
   getVotesKey,
+  deleteCacheKey,
   getVoteTokenKey,
   getVoteVerifyKey,
   redisCacheExpiry,
+  getElectionsVotedKey,
 } = require('../utils/redis.utils');
 
 /**
@@ -133,6 +135,10 @@ const castVote = async (req, res) => {
 
   // update the user's voted elections
   await ElectionVoted.create({ user: user._id, election: electionID });
+
+  // delete user's voted election cache
+  const electionsVotedCacheKey = getElectionsVotedKey(user._id);
+  await deleteCacheKey(electionsVotedCacheKey, req.redisClient);
 
   // update or set user cache
   const userCacheKey = getUserKey(user.email.value);

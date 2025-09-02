@@ -6,6 +6,7 @@ const Log = require('../models/log.model');
 const { logger } = require('../utils/logger.utils');
 const Election = require('../models/election.model');
 const Contestant = require('../models/contestant.model');
+const ElectionVoted = require('../models/election-voted.model');
 const { APIError } = require('../middlewares/error.middlewares');
 const ElectionContestant = require('../models/election-contestant.model');
 const {
@@ -13,6 +14,7 @@ const {
   getElectionsKey,
   redisCacheExpiry,
   getUserElectionsKey,
+  getElectionsVotedKey,
   getElectionContestantsKey,
 } = require('../utils/redis.utils');
 const {
@@ -182,6 +184,40 @@ const getUserElections = async (req, res) => {
   res
     .status(StatusCodes.OK)
     .json({ success: true, data: paginatedElections, message: 'Elections fetched successfully' });
+};
+
+/**
+ * @param {express.Request & {redisClient: Redis}} req
+ * @param {express.Response} res
+ */
+const getUserVotedElections = async (req, res) => {
+  logger.info('Get User Voted Elections endpoint called');
+
+  const { user } = req;
+
+  // check cache for user voted elections
+  const electionsVotedCacheKey = getElectionsVotedKey(user._id);
+  let votedElections = await req.redisClient.get(electionsVotedCacheKey);
+  if (votedElections) {
+    logger.info('Voted Elections fetched successfully');
+    return res.status(StatusCodes.OK).json({
+      success: true,
+      data: JSON.parse(votedElections),
+      message: 'Voted Elections fetched successfully',
+    });
+  }
+
+  votedElections = await ElectionVoted.find({ user: user._id }).select('election createdAt -_id');
+
+  // cache fetched user voted elections
+  await req.redisClient.setex(electionsVotedCacheKey, 86_400, JSON.stringify(votedElections));
+
+  logger.info('Voted Elections fetched successfully');
+  res.status(StatusCodes.OK).json({
+    success: true,
+    data: votedElections,
+    message: 'Voted Elections fetched successfully',
+  });
 };
 
 /**
@@ -408,4 +444,5 @@ module.exports = {
   deleteElection,
   getUserElections,
   removeContestant,
+  getUserVotedElections,
 };

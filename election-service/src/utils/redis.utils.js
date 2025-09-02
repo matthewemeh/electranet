@@ -24,6 +24,12 @@ const getElectionsKey = (...values) => `elections:${values.join(':')}`;
 
 /**
  * @param {Array<string | number>} values unique values to be used in key. The order of the arguments affects the key!!!
+ * @returns {string} elections voted key in a standard pattern
+ */
+const getElectionsVotedKey = (...values) => `elections-voted:${values.join(':')}`;
+
+/**
+ * @param {Array<string | number>} values unique values to be used in key. The order of the arguments affects the key!!!
  * @returns {string} user elections key in a standard pattern
  */
 const getUserElectionsKey = (...values) => `user-elections:${values.join(':')}`;
@@ -133,5 +139,6 @@ module.exports = {
   redisCacheExpiry,
   getContestantsKey,
   getUserElectionsKey,
+  getElectionsVotedKey,
   getElectionContestantsKey,
 };
