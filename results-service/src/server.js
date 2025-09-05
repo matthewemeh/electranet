@@ -45,7 +45,7 @@ app.get('/health', healthCheckRateLimiter, (req, res) => {
 app.use(configureRatelimitRedis(redisClient, 300, 900));
 
 // apply this sensitiveEndpointsLimiter to our routes
-app.use(configureRatelimit(redisClient, 30));
+app.use(configureRatelimit(redisClient, 200));
 
 // Routes
 app.use('/api/results', useRedis(redisClient), resultRoutes);

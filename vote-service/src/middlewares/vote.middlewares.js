@@ -28,7 +28,7 @@ const verifyVote = async (req, res, next) => {
 
   const { electionID, partyID, voteToken } = reqBody;
 
-  // check if vote token is valid
+  // check if vote token is expired
   const voteTokenKey = getVoteTokenKey(user._id);
   const hashedVoteToken = await req.redisClient.get(voteTokenKey);
   if (!hashedVoteToken) {
@@ -37,12 +37,12 @@ const verifyVote = async (req, res, next) => {
       'Vote Token has expired',
       StatusCodes.GONE,
       null,
-      ERROR_CODES.INVALID_VOTE_TOKEN
+      ERROR_CODES.EXPIRED_VOTE_TOKEN
     );
   }
 
+  // check if vote token is valid
   const isVoteTokenValid = await verify(hashedVoteToken, voteToken);
-
   if (!isVoteTokenValid) {
     logger.error('Invalid Vote Token');
     throw new APIError(
@@ -77,7 +77,12 @@ const verifyVote = async (req, res, next) => {
   // check if user has voted before
   const userHasVoted = await user.hasVoted(electionID);
   if (userHasVoted) {
-    throw new APIError('You have voted for this election already!', StatusCodes.BAD_REQUEST);
+    throw new APIError(
+      'You have voted for this election already!',
+      StatusCodes.BAD_REQUEST,
+      null,
+      ERROR_CODES.DUPLICATE_VOTE
+    );
   }
 
   // check if party exists

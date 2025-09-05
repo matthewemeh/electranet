@@ -102,7 +102,7 @@ const castVote = async (req, res) => {
   }
 
   // find last vote for that election
-  const lastVote = await Vote.findOne({ 'data.election': electionID, isTailVoteNode: true });
+  const lastVote = await Vote.findOne({ 'data.election': electionID, isTailNode: true });
 
   // assume new vote is the first vote or genesis node
   const votePayload = {
@@ -140,9 +140,9 @@ const castVote = async (req, res) => {
   const electionsVotedCacheKey = getElectionsVotedKey(user._id);
   await deleteCacheKey(electionsVotedCacheKey, req.redisClient);
 
-  // update or set user cache
-  const userCacheKey = getUserKey(user.email.value);
-  await req.redisClient.setex(userCacheKey, redisCacheExpiry, JSON.stringify(user.toRaw()));
+  // invalidate Vote Token
+  const voteTokenKey = getVoteTokenKey(user._id);
+  await deleteCacheKey(voteTokenKey, req.redisClient);
 
   // send user a notification and an email
   await sendNotification({
@@ -265,6 +265,11 @@ const getVotes = async (req, res) => {
   const sort = sortBy ? JSON.parse(sortBy) : { timestamp: -1 };
   paginatedVotes = await Vote.paginate({ election: id }, { page, limit, sort, select: '-__v' });
 
+  // mask hash of each vote
+  paginatedVotes.docs.forEach(vote => {
+    vote.hash = `${vote.hash.slice(0, 4)}****${vote.hash.slice(-4)}`;
+  });
+
   // cache the fetched votes
   await req.redisClient.setex(votesKey, redisCacheExpiry, JSON.stringify(paginatedVotes));
 
@@ -279,7 +284,7 @@ const getVotes = async (req, res) => {
  * @param {express.Response} res
  */
 const addVoteToken = async (req, res) => {
-  logger.info('Get Votes endpoint called');
+  logger.info('Add Vote Token endpoint called');
 
   const token = uuidv4();
   const hashedToken = await hash(token);

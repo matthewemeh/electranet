@@ -56,7 +56,6 @@ VoteSchema.methods.isValid = function (previousVote) {
 VoteSchema.methods.toJSON = function () {
   const vote = this.toObject();
   delete vote.data;
-  delete vote.index;
   delete vote.election;
   delete vote.isTailNode;
   delete vote.previousHash;

@@ -17,6 +17,12 @@ const getUserKey = (...values) => `user:${values.join(':')}`;
 const getResultsKey = (...values) => `results:${values.join(':')}`;
 
 /**
+ * @param {Array<string | number>} values unique values to be used in key. The order of the arguments affects the key!!!
+ * @returns {string} result key in a standard pattern
+ */
+const getResultKey = (...values) => `result:${values.join(':')}`;
+
+/**
  * This function checks Redis cache before checking the database for requested object
  * @param {string} cacheKey the cached data's key
  * @param {object} searchQuery the fields to query the database if cache is not found
@@ -52,4 +58,11 @@ const deleteCacheKey = async (cacheKey, redisClient) => {
   await redisClient.unlink(cacheKey);
 };
 
-module.exports = { fetchData, getUserKey, getResultsKey, deleteCacheKey, redisCacheExpiry };
+module.exports = {
+  fetchData,
+  getUserKey,
+  getResultKey,
+  getResultsKey,
+  deleteCacheKey,
+  redisCacheExpiry,
+};

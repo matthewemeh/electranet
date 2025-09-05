@@ -16,6 +16,7 @@ const AdminTokenSchema = new Schema(
     },
   },
   {
+    id: false,
     minimize: false,
     timestamps: true,
     collection: 'adminTokens',

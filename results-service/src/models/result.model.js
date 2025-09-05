@@ -1,4 +1,5 @@
 const { Schema, model, Types } = require('mongoose');
+const mongoosePaginate = require('mongoose-paginate-v2');
 
 const subDocOptions = { minimize: false, _id: false, id: false };
 
@@ -17,6 +18,7 @@ const ResultSchema = new Schema(
     election: { type: Types.ObjectId, ref: 'Election', unique: true, required: true },
   },
   {
+    id: false,
     minimize: false,
     timestamps: true,
     collection: 'results',
@@ -24,6 +26,7 @@ const ResultSchema = new Schema(
     toObject: { virtuals: true },
   }
 );
+ResultSchema.plugin(mongoosePaginate);
 
 ResultSchema.virtual('totalVotes').get(function () {
   const totalVotes = this.results.reduce((sum, item) => sum + item.votes, 0);

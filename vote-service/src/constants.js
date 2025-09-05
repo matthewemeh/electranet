@@ -10,5 +10,7 @@ module.exports = {
     DUPLICATE_USER: 'E006',
     SUPER_ADMIN_REG_FAILED: 'E007',
     INVALID_VOTE_TOKEN: 'E008',
+    EXPIRED_VOTE_TOKEN: 'E009',
+    DUPLICATE_VOTE: 'E010',
   },
 };

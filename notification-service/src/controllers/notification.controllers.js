@@ -25,7 +25,7 @@ const getNotifications = async (req, res) => {
   const { user } = req;
   const { page, limit, sortBy, startTime, endTime } = reqBody;
 
-  // check cache for notifications
+  // check cached notifications
   const notificationsCacheKey = getNotificationsKey(page, limit, sortBy, startTime, endTime);
   let paginatedNotifications = await req.redisClient.get(notificationsCacheKey);
   if (paginatedNotifications) {
