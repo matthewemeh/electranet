@@ -9,7 +9,11 @@ const { PARTY_IMAGE_KEY } = require('../constants');
 const { logger } = require('../utils/logger.utils');
 const { getPartyImageKey } = require('../utils/party.utils');
 const { APIError } = require('../middlewares/error.middlewares');
-const { redisCacheExpiry, getPartiesKey } = require('../utils/redis.utils');
+const {
+  getPartiesKey,
+  redisCacheExpiry,
+  deleteCachePatternAsync,
+} = require('../utils/redis.utils');
 const {
   validateParty,
   validateGetParties,
@@ -69,6 +73,10 @@ const addParty = async (req, res) => {
     action: 'PARTY_ADD',
     message: `Added new party: ${party.longName}`,
   });
+
+  // delete parties cache
+  const partiesKey = getPartiesKey('*');
+  deleteCachePatternAsync(partiesKey, req.redisClient, 500);
 
   logger.info('Party added successfully');
   res
@@ -155,7 +163,7 @@ const getParties = async (req, res) => {
   logger.info('Get Parties endpoint called');
 
   // validate request query
-  const { error, value: reqBody } = validateGetParties(req.query);
+  const { error, value: reqQuery } = validateGetParties(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
@@ -164,7 +172,7 @@ const getParties = async (req, res) => {
   let parties, partiesKey;
 
   // check if request is for pagination
-  const { page, limit, sortBy } = reqBody;
+  const { page, limit, sortBy } = reqQuery;
   if (page && !limit) {
     logger.warn(
       '"limit" is required when "page" is provided. Both "page" and "limit" must be specified for pagination.'

@@ -16,14 +16,14 @@ const getNotifications = async (req, res) => {
   logger.info('Get notifications endpoint called');
 
   // validate request query
-  const { error, value: reqBody } = validateGetNotifications(req.query);
+  const { error, value: reqQuery } = validateGetNotifications(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { user } = req;
-  const { page, limit, sortBy, startTime, endTime } = reqBody;
+  const { page, limit, sortBy, startTime, endTime } = reqQuery;
 
   // check cached notifications
   const notificationsCacheKey = getNotificationsKey(page, limit, sortBy, startTime, endTime);

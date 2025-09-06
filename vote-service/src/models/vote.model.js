@@ -16,6 +16,7 @@ const VoteData = new Schema(
 
 const VoteSchema = new Schema(
   {
+    isInvalid: { type: Boolean },
     isTailNode: { type: Boolean, required: true },
     hash: { type: String, required: true, immutable: true },
     data: { type: VoteData, required: true, immutable: true },

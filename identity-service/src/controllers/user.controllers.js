@@ -23,6 +23,7 @@ const {
   getAdminTokenKey,
   redisCacheExpiry,
   getAdminTokensKey,
+  deleteCachePatternAsync,
 } = require('../utils/redis.utils');
 
 /**
@@ -33,14 +34,14 @@ const getUsers = async (req, res) => {
   logger.info('Get Users endpoint called');
 
   // validate the request query
-  const { error, value: reqBody } = validateGetUsers(req.query);
+  const { error, value: reqQuery } = validateGetUsers(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { role: adminRole } = req.user;
-  const { page, limit, sortBy, delimitationCode, email, firstName, lastName, role } = reqBody;
+  const { page, limit, sortBy, delimitationCode, email, firstName, lastName, role } = reqQuery;
 
   // check cache for users
   const usersCacheKey = getUsersKey(
@@ -226,6 +227,10 @@ const modifyAdminToken = async (req, res) => {
   const adminTokenCacheKey = getAdminTokenKey(adminToken.user);
   await req.redisClient.setex(adminTokenCacheKey, redisCacheExpiry, JSON.stringify(adminToken));
 
+  // delete admin tokens cache
+  const tokensCacheKey = getAdminTokensKey('*');
+  deleteCachePatternAsync(tokensCacheKey, req.redisClient, 50);
+
   logger.info('Admin rights modified successfully');
   res
     .status(StatusCodes.OK)
@@ -240,13 +245,13 @@ const getAdminTokens = async (req, res) => {
   logger.info('Get Admin Tokens endpoint called');
 
   // validate the request query
-  const { error, value: reqBody } = validateGetAdminTokens(req.query);
+  const { error, value: reqQuery } = validateGetAdminTokens(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { page, limit, sortBy } = reqBody;
+  const { page, limit, sortBy } = reqQuery;
 
   // check cached admin tokens
   const tokensCacheKey = getAdminTokensKey(page, limit, sortBy);

@@ -37,8 +37,4 @@ const validateGetVotes = data => {
   return schema.validate(data);
 };
 
-module.exports = {
-  validateCastVote,
-  validateGetVotes,
-  validateVerifyUserVote,
-};
+module.exports = { validateCastVote, validateGetVotes, validateVerifyUserVote };

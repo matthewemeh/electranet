@@ -15,6 +15,7 @@ const {
   redisCacheExpiry,
   getUserElectionsKey,
   getElectionsVotedKey,
+  deleteCachePatternAsync,
   getElectionContestantsKey,
 } = require('../utils/redis.utils');
 const {
@@ -49,6 +50,10 @@ const addElection = async (req, res) => {
     message: `Added new election: ${election.name}`,
   });
 
+  // delete elections cache
+  const electionsCacheKey = getElectionsKey('*');
+  deleteCachePatternAsync(electionsCacheKey, req.redisClient, 500);
+
   logger.info('Election created');
   res
     .status(StatusCodes.CREATED)
@@ -63,13 +68,13 @@ const getElections = async (req, res) => {
   logger.info('Get Elections endpoint called');
 
   // validate request query
-  const { error, value: reqBody } = validateGetElections(req.query);
+  const { error, value: reqQuery } = validateGetElections(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { page, limit, sortBy, ...docQuery } = reqBody;
+  const { page, limit, sortBy, ...docQuery } = reqQuery;
   const { delimitationCode, startTime, endTime } = docQuery;
 
   // check cached elections
@@ -133,14 +138,14 @@ const getUserElections = async (req, res) => {
   logger.info('Get User Elections endpoint called');
 
   // validate request query
-  const { error, value: reqBody } = validateGetUserElections(req.query);
+  const { error, value: reqQuery } = validateGetUserElections(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { user } = req;
-  const { page, limit, sortBy, ...docQuery } = reqBody;
+  const { page, limit, sortBy, ...docQuery } = reqQuery;
   const { startTime, endTime } = docQuery;
 
   // check cache for user elections
@@ -304,6 +309,10 @@ const deleteElection = async (req, res) => {
     action: 'ELECTION_DELETE',
     message: `Deleted Election: ${election.name}`,
   });
+
+  // delete elections cache
+  const electionsCacheKey = getElectionsKey('*');
+  deleteCachePatternAsync(electionsCacheKey, req.redisClient, 500);
 
   logger.info('Election deleted successfully');
   res

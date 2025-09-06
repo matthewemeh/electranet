@@ -18,13 +18,13 @@ const { sendNotification } = require('../utils/notification.utils');
 const ElectionContestant = require('../models/election-contestant.model');
 const { validateGetVotes, validateVerifyUserVote } = require('../utils/validation.utils');
 const {
-  getUserKey,
   getVotesKey,
   deleteCacheKey,
   getVoteTokenKey,
   getVoteVerifyKey,
   redisCacheExpiry,
   getElectionsVotedKey,
+  deleteCachePatternAsync,
 } = require('../utils/redis.utils');
 
 /**
@@ -221,6 +221,11 @@ const verifyUserVote = async (req, res) => {
   if (vote.isValid(previousVote)) {
     result.status = 'success';
     result.message = 'Vote verification successful';
+  } else {
+    await Vote.findByIdAndUpdate(voteID, { isInvalid: true });
+    // invalidate votes cache for that election
+    const votesKey = getVotesKey(vote.data.election, '*');
+    deleteCachePatternAsync(votesKey, req.redisClient);
   }
 
   // cache new verified vote result
@@ -240,14 +245,14 @@ const getVotes = async (req, res) => {
   logger.info('Get Votes endpoint called');
 
   // validate request query
-  const { error, value: reqBody } = validateGetVotes(req.query);
+  const { error, value: reqQuery } = validateGetVotes(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
   const { id } = req.params;
-  const { page, limit, sortBy } = reqBody;
+  const { page, limit, sortBy } = reqQuery;
 
   // check for cached votes
   const votesKey = getVotesKey(id, page, limit, sortBy);
@@ -266,8 +271,10 @@ const getVotes = async (req, res) => {
   paginatedVotes = await Vote.paginate({ election: id }, { page, limit, sort, select: '-__v' });
 
   // mask hash of each vote
-  paginatedVotes.docs.forEach(vote => {
+  paginatedVotes.docs = paginatedVotes.docs.map(voteDoc => {
+    const vote = voteDoc.toJSON();
     vote.hash = `${vote.hash.slice(0, 4)}****${vote.hash.slice(-4)}`;
+    return vote;
   });
 
   // cache the fetched votes

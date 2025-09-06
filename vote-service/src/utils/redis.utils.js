@@ -1,6 +1,8 @@
 const { Redis } = require('ioredis');
 const { Model } = require('mongoose');
 
+const { logger } = require('./logger.utils');
+
 // cache expiry period in seconds
 const redisCacheExpiry = Number(process.env.REDIS_CACHE_EXPIRY) || 300;
 
@@ -70,6 +72,35 @@ const deleteCacheKey = async (cacheKey, redisClient) => {
   await redisClient.unlink(cacheKey);
 };
 
+/**
+ * Fire-and-forget: delete all Redis keys matching a given pattern
+ * @param {string} pattern The key pattern (e.g., "votes:*")
+ * @param {Redis} redisClient The redis client
+ */
+const deleteCachePatternAsync = (pattern, redisClient, keysPerBatch = 1000) => {
+  (async () => {
+    try {
+      let cursor = '0';
+      do {
+        const [newCursor, keys] = await redisClient.scan(
+          cursor,
+          'MATCH',
+          pattern,
+          'COUNT',
+          keysPerBatch
+        );
+        cursor = newCursor;
+
+        if (keys.length > 0) {
+          await redisClient.unlink(...keys);
+        }
+      } while (cursor !== '0');
+    } catch (err) {
+      logger.error(`Error cleaning cache for pattern "${pattern}":`, err);
+    }
+  })();
+};
+
 module.exports = {
   fetchData,
   getUserKey,
@@ -79,4 +110,5 @@ module.exports = {
   getVoteVerifyKey,
   redisCacheExpiry,
   getElectionsVotedKey,
+  deleteCachePatternAsync,
 };

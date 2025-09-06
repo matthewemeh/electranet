@@ -19,6 +19,7 @@ const {
 const {
   redisCacheExpiry,
   getContestantsKey,
+  deleteCachePatternAsync,
   getElectionContestantsKey,
 } = require('../utils/redis.utils');
 
@@ -84,6 +85,10 @@ const addContestant = async (req, res) => {
     action: 'CONTESTANT_ADD',
     message: `Added new contestant: ${contestant.fullName}`,
   });
+
+  // delete contestants cache
+  const contestantsCacheKey = getContestantsKey('*');
+  deleteCachePatternAsync(contestantsCacheKey, req.redisClient, 500);
 
   logger.info('Contestant created');
   res
@@ -179,13 +184,13 @@ const getContestants = async (req, res) => {
   logger.info('Get Contestants endpoint called');
 
   // validate request query
-  const { error, value: reqBody } = validateGetContestants(req.query);
+  const { error, value: reqQuery } = validateGetContestants(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { page, limit, sortBy, ...docQuery } = reqBody;
+  const { page, limit, sortBy, ...docQuery } = reqQuery;
   const { party, isDeleted, gender, firstName, lastName } = docQuery;
 
   // check cached contestants

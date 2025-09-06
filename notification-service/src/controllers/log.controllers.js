@@ -16,13 +16,13 @@ const getLogs = async (req, res) => {
   logger.info('Get logs endpoint called');
 
   // validate request query
-  const { error, value: reqBody } = validateGetLogs(req.query);
+  const { error, value: reqQuery } = validateGetLogs(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { page, limit, sortBy, startTime, endTime } = reqBody;
+  const { page, limit, sortBy, startTime, endTime } = reqQuery;
 
   // check cache for logs
   const logsCacheKey = getLogsKey(page, limit, sortBy, startTime, endTime);

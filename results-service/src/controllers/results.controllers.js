@@ -19,13 +19,13 @@ const getResults = async (req, res) => {
   logger.info('Get Results endpoint called');
 
   // validate request query
-  const { error, value: reqBody } = validateGetResults(req.query);
+  const { error, value: reqQuery } = validateGetResults(req.query);
   if (error) {
     logger.warn('Query Validation error', { message: error.details[0].message });
     throw new APIError(error.details[0].message, StatusCodes.BAD_REQUEST);
   }
 
-  const { page, limit, sortBy, startTime, endTime } = reqBody;
+  const { page, limit, sortBy, startTime, endTime } = reqQuery;
 
   // check cached results
   const resultsCacheKey = getResultsKey(page, limit, sortBy, startTime, endTime);
