@@ -4,6 +4,7 @@ const { StatusCodes } = require('http-status-codes');
 
 const supabase = require('../services/supabase');
 const { USER_IMAGE_KEY } = require('../constants');
+const { verifyOTP } = require('../utils/otp.utils');
 const { logger } = require('../utils/logger.utils');
 const { APIError } = require('../middlewares/error.middlewares');
 const { getUserFaceImageKey } = require('../utils/face-id.utils');
@@ -20,6 +21,7 @@ const registerFace = async (req, res) => {
   logger.info('Facial Data Registration endpoint called');
 
   const { user } = req;
+  const { otp } = req.body;
   const image = req.files?.find(({ fieldname }) => fieldname === USER_IMAGE_KEY);
 
   // validate the request body
@@ -31,6 +33,15 @@ const registerFace = async (req, res) => {
       `"${USER_IMAGE_KEY}" is missing in Multipart form data`,
       StatusCodes.BAD_REQUEST
     );
+  } else if (!otp) {
+    logger.warn('Validation error', { message: '"otp" is required' });
+    throw new APIError('"otp" is required', StatusCodes.BAD_REQUEST);
+  }
+
+  const isValidOTP = await verifyOTP(user.email.value, otp, req.redisClient);
+  if (!isValidOTP) {
+    logger.error('Invalid OTP');
+    throw new APIError('Invalid OTP', StatusCodes.BAD_REQUEST);
   }
 
   const filePath = getUserFaceImageKey(user._id);
