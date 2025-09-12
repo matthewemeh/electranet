@@ -3,7 +3,6 @@ const mongoosePaginate = require('mongoose-paginate-v2');
 
 const ContestantSchema = new Schema(
   {
-    isDeleted: { type: Boolean },
     middleName: { type: String },
     lastName: { type: String, required: true },
     firstName: { type: String, required: true },

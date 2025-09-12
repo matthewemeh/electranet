@@ -180,6 +180,51 @@ const updateContestant = async (req, res) => {
  * @param {express.Request & {redisClient: Redis}} req
  * @param {express.Response} res
  */
+const deleteContestant = async (req, res) => {
+  logger.info('Delete Contestant endpoint called');
+
+  const { id } = req.params;
+
+  // check if contestant is already a participant in an election
+  const electionContestant = await ElectionContestant.findOne({ contestant: id }).populate({
+    path: 'election',
+    select: 'name -_id',
+  });
+  if (electionContestant) {
+    logger.error(`Contestant is a participant in an election: ${electionContestant.election.name}`);
+    throw new APIError(
+      `Contestant is a participant in an election: ${electionContestant.election.name}`,
+      StatusCodes.BAD_REQUEST
+    );
+  }
+
+  const deletedContestant = await Contestant.findByIdAndDelete(id);
+  if (!deletedContestant) {
+    logger.error('Contestant not found');
+    throw new APIError('Contestant not found', StatusCodes.NOT_FOUND);
+  }
+
+  // create an event log
+  await Log.create({
+    user: req.user._id,
+    action: 'CONTESTANT_DELETE',
+    message: `Deleted contestant: ${deletedContestant.fullName}`,
+  });
+
+  // delete contestants cache
+  const contestantsCacheKey = getContestantsKey('*');
+  deleteCachePatternAsync(contestantsCacheKey, req.redisClient, 500);
+
+  logger.info('Contestant deleted successfully');
+  res
+    .status(StatusCodes.OK)
+    .json({ success: true, message: 'Contestant deleted successfully', data: null });
+};
+
+/**
+ * @param {express.Request & {redisClient: Redis}} req
+ * @param {express.Response} res
+ */
 const getContestants = async (req, res) => {
   logger.info('Get Contestants endpoint called');
 
@@ -270,16 +315,11 @@ const getElectionContestants = async (req, res) => {
 
   // fallback to DB
   contestants = await ElectionContestant.find({ election: id })
-    .select('contestant -_id')
-    .populate({
-      path: 'contestant',
-      select: '-createdAt -updatedAt -__v',
-      populate: { path: 'party', select: '-createdAt -updatedAt -__v' },
-    });
-
-  contestants = contestants
-    .filter(({ contestant }) => !contestant.isDeleted)
-    .map(({ contestant }) => contestant);
+    .select('contestant party -_id')
+    .populate([
+      { path: 'party', select: '-createdAt -updatedAt -__v' },
+      { path: 'contestant', select: '-createdAt -updatedAt -party -__v' },
+    ]);
 
   // cache fetched election contestants
   await req.redisClient.setex(contestantsCacheKey, redisCacheExpiry, JSON.stringify(contestants));
@@ -292,4 +332,10 @@ const getElectionContestants = async (req, res) => {
   });
 };
 
-module.exports = { addContestant, getContestants, updateContestant, getElectionContestants };
+module.exports = {
+  addContestant,
+  getContestants,
+  updateContestant,
+  deleteContestant,
+  getElectionContestants,
+};

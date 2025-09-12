@@ -11,6 +11,7 @@ const {
   addContestant,
   getContestants,
   updateContestant,
+  deleteContestant,
   getElectionContestants,
 } = require('../controllers/contestant.controllers');
 
@@ -26,6 +27,8 @@ router.use(verifyAdminToken);
 router.get('/', getContestants);
 
 router.post('/add', upload.any(), addContestant);
+
+router.delete('/delete/:id', isValidID, deleteContestant);
 
 router.patch('/edit/:id', isValidID, upload.any(), updateContestant);
 
