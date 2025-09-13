@@ -102,7 +102,7 @@ const castVote = async (req, res) => {
   }
 
   // find last vote for that election
-  const lastVote = await Vote.findOne({ 'data.election': electionID, isTailNode: true });
+  const lastVote = await Vote.findOne({ election: electionID, isTailNode: true });
 
   // assume new vote is the first vote or genesis node
   const votePayload = {

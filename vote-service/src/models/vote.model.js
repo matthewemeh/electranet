@@ -30,7 +30,7 @@ const VoteSchema = new Schema(
 VoteSchema.plugin(mongoosePaginate);
 VoteSchema.plugin(encryption, {
   secret: process.env.MONGO_DB_SECRET,
-  excludeFromEncryption: ['election'],
+  excludeFromEncryption: ['election', 'isTailNode'],
 });
 
 /**
