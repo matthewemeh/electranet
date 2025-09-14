@@ -54,7 +54,6 @@ const validateContestant = data => {
 
 const validateContestantUpdate = data => {
   const schema = Joi.object({
-    isDeleted: Joi.boolean(),
     stateOfOrigin: Joi.string().trim().max(30),
     gender: Joi.string().equal('MALE', 'FEMALE'),
     lastName: Joi.string().trim().min(2).max(64),
@@ -76,7 +75,6 @@ const validateGetContestants = data => {
   const schema = Joi.object({
     lastName: Joi.string(),
     firstName: Joi.string(),
-    isDeleted: Joi.boolean(),
     sortBy: Joi.string().trim(),
     gender: Joi.string().equal('MALE', 'FEMALE'),
     page: Joi.number().integer().positive().default(1),

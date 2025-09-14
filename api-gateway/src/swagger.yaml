@@ -1026,11 +1026,6 @@ paths:
           schema:
             type: string
             description: A Party's ID
-        - name: isDeleted
-          in: query
-          required: false
-          schema:
-            type: boolean
       responses:
         '200':
           description: Parties fetched successfully

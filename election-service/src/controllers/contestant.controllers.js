@@ -236,7 +236,7 @@ const getContestants = async (req, res) => {
   }
 
   const { page, limit, sortBy, ...docQuery } = reqQuery;
-  const { party, isDeleted, gender, firstName, lastName } = docQuery;
+  const { party, gender, firstName, lastName } = docQuery;
 
   // check cached contestants
   const contestantsCacheKey = getContestantsKey(
@@ -246,8 +246,7 @@ const getContestants = async (req, res) => {
     party,
     gender,
     lastName,
-    firstName,
-    isDeleted
+    firstName
   );
   let paginatedContestants = await req.redisClient.get(contestantsCacheKey);
   if (paginatedContestants) {

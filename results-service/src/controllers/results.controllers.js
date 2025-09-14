@@ -94,7 +94,7 @@ const getResult = async (req, res) => {
     .populate([
       { path: 'election', select: 'name delimitationCode -_id' },
       { path: 'results.party', select: 'longName shortName logoUrl -_id' },
-      { path: 'results.contestants', select: '-isDeleted -party -createdAt -updatedAt -__v' },
+      { path: 'results.contestants', select: '-party -createdAt -updatedAt -__v' },
     ]);
   if (!result) {
     logger.error('Result not found');
