@@ -1,12 +1,27 @@
-# Electranet
+# Electranet (Backend)
 
-#### By [Matthew Emeh](https://github.com/matthewemeh) @5th of June, 2025
+#### By [Matthew Emeh](https://github.com/matthewemeh) @29th of September, 2025
+
+<br>
+
+## Certification
+
+This is to certify that this project was carried out by [EMEH MATTHEW CHUKWUEMEKA](https://github.com/matthewemeh) with the matriculation number 180408011 in the department of Electrical and Electronics Engineering, Faculty of Engineering, University of Lagos under the supervision of Dr. (Mrs.) Khadeejah Adebisi Abdulsalam.
 
 <br>
 
 ## Overview
 
 Electranet is a distributed, microservices-based voting platform designed for secure, scalable, and transparent elections. The system is composed of several independent services, each responsible for a specific domain, all coordinated through a central API Gateway. Electranet supports authentication, voting, results collation, notifications, and more, with robust logging, rate limiting, and validation throughout.
+
+## Table of Contents
+
+- [Architecture](#architecture)
+- [Features](#features)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [API Endpoints](#api-endpoints)
+- [Contributing](#contributing)
 
 ## Architecture
 
@@ -48,16 +63,17 @@ Electranet is a distributed, microservices-based voting platform designed for se
   - `models/` – Data models
   - `routes/` – API route definitions
   - `utils/` – Utility functions
+  - `*.env` files - Add these files as needed for secrets and environment-specific settings. Kindly make a request from owner - [Matthew Emeh](https://github.com/matthewemeh)
 
 ## Getting Started
 
 ### Prerequisites
 
-- **Node.js** (version 22.16.0 or higher)
-- **npm** or **yarn**
-- **Git** (To clone the repository)
-- **MongoDB** (local or cloud instance)
-- **Redis** (for rate limiting, optional but recommended)
+- [**Node.js**](https://nodejs.org/) (version 22.16.0 or higher)
+- [**npm**](https://www.npmjs.com/) or [**yarn**](https://yarnpkg.com/)
+- [**Git**](https://git-scm.com/) (To clone the repository)
+- [**MongoDB**](https://www.mongodb.com/) (local or cloud instance)
+- [**Redis**](https://github.com/tporadowski/redis/releases) (for rate limiting, optional but recommended)
 
 ### Setup
 
@@ -87,5 +103,7 @@ Electranet is a distributed, microservices-based voting platform designed for se
 ## Contributing
 
 1. Fork the repository
-2. Create a new branch
-3. Submit a pull request
+2. Create a new branch (`git checkout -b feature/your-feature`)
+3. Commit your changes (`git commit -am 'Add new feature'`)
+4. Push to the branch (`git push origin feature/your-feature`)
+5. Open a pull request
