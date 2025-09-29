@@ -6,13 +6,13 @@
 
 ## Certification
 
-This is to certify that this project was carried out by [EMEH MATTHEW CHUKWUEMEKA](https://github.com/matthewemeh) with the matriculation number 180408011 in the department of Electrical and Electronics Engineering, Faculty of Engineering, University of Lagos under the supervision of Dr. (Mrs.) Khadeejah Adebisi Abdulsalam. It is deployed at: [https://electranet-f0ls.onrender.com](https://electranet-f0ls.onrender.com)
+This is to certify that this project was carried out by [EMEH MATTHEW CHUKWUEMEKA](https://github.com/matthewemeh) with the matriculation number 180408011 in the department of Electrical and Electronics Engineering, Faculty of Engineering, University of Lagos under the supervision of Dr. (Mrs.) Khadeejah Adebisi Abdulsalam.
 
 <br>
 
 ## Overview
 
-Electranet is a distributed, microservices-based voting platform designed for secure, scalable, and transparent elections. The system is composed of several independent services, each responsible for a specific domain, all coordinated through a central API Gateway. Electranet supports authentication, voting, results collation, notifications, and more, with robust logging, rate limiting, and validation throughout.
+Electranet is a distributed, microservices-based voting platform designed for secure, scalable, and transparent elections. The system is composed of several independent services, each responsible for a specific domain, all coordinated through a central API Gateway. Electranet supports authentication, voting, results collation, notifications, and more, with robust logging, rate limiting, and validation throughout. It is deployed at: [https://electranet-f0ls.onrender.com](https://electranet-f0ls.onrender.com)
 
 ## Table of Contents
 
